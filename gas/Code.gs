@@ -500,9 +500,9 @@ function getVisitByRow(rowIndex) {
 }
 
 
-// ==== AUTH (ใหม่) — Username/Password login ================================
+// ==== AUTH (ใหม่) — Username/Password login + จัดการผู้ใช้หลายคน ============
 // สร้าง 2 sheet ใหม่แบบ additive เท่านั้น (ไม่แตะ sheet เดิม):
-//   Users:    Username | PasswordHash | DisplayName | Active
+//   Users:    Username | PasswordHash | DisplayName | Active | Role (admin/staff)
 //   Sessions: Token | Username | ExpiresAt
 
 var SESSION_DURATION_MS = 12 * 60 * 60 * 1000; // อายุ session 12 ชั่วโมง
@@ -512,7 +512,22 @@ function getOrCreateUsersSheet() {
   var sheet = ss.getSheetByName('Users');
   if (!sheet) {
     sheet = ss.insertSheet('Users');
-    sheet.appendRow(['Username', 'PasswordHash', 'DisplayName', 'Active']);
+    sheet.appendRow(['Username', 'PasswordHash', 'DisplayName', 'Active', 'Role']);
+    return sheet;
+  }
+  // migrate: เพิ่มคอลัมน์ Role ถ้ายังไม่มี (สำหรับ sheet ที่สร้างไว้ก่อนมีฟีเจอร์นี้)
+  var header = sheet.getRange(1, 1, 1, Math.max(5, sheet.getLastColumn())).getValues()[0];
+  if (header[4] !== 'Role') {
+    sheet.getRange(1, 5).setValue('Role');
+    var lastRow = sheet.getLastRow();
+    if (lastRow > 1) {
+      var roleCol = sheet.getRange(2, 5, lastRow - 1, 1).getValues();
+      for (var i = 0; i < roleCol.length; i++) {
+        // ผู้ใช้ที่มีอยู่ก่อนฟีเจอร์นี้ ให้เป็น admin ไว้ก่อน กันไม่ให้ล็อกตัวเองออกจากหน้าจัดการผู้ใช้
+        if (!roleCol[i][0]) roleCol[i][0] = 'admin';
+      }
+      sheet.getRange(2, 5, roleCol.length, 1).setValues(roleCol);
+    }
   }
   return sheet;
 }
@@ -536,22 +551,24 @@ function hashPassword(password) {
  * รันฟังก์ชันนี้เองจาก Apps Script Editor เท่านั้น (เลือกฟังก์ชันแล้วกด Run)
  * เพื่อสร้าง/รีเซ็ตรหัสผ่านผู้ใช้ — ไม่ได้เปิดให้เรียกผ่าน API เพื่อความปลอดภัย
  */
-function createOrUpdateUser(username, plainPassword, displayName) {
+function createOrUpdateUser(username, plainPassword, displayName, role) {
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
     var sheet = getOrCreateUsersSheet();
     var data = sheet.getDataRange().getValues();
     var hash = hashPassword(plainPassword);
+    var finalRole = (role === 'staff') ? 'staff' : 'admin'; // default admin เพื่อความเข้ากันได้กับการใช้งานเดิม
     for (var i = 1; i < data.length; i++) {
       if (data[i][0] === username) {
         sheet.getRange(i + 1, 2).setValue(hash);
         sheet.getRange(i + 1, 3).setValue(displayName || data[i][2]);
         sheet.getRange(i + 1, 4).setValue(true);
+        sheet.getRange(i + 1, 5).setValue(role ? finalRole : (data[i][4] || 'admin'));
         return 'Updated: ' + username;
       }
     }
-    sheet.appendRow([username, hash, displayName || username, true]);
+    sheet.appendRow([username, hash, displayName || username, true, finalRole]);
     return 'Created: ' + username;
   } finally {
     lock.releaseLock();
@@ -579,7 +596,7 @@ function login(username, password) {
       var token = Utilities.getUuid();
       var sessSheet = getOrCreateSessionsSheet();
       sessSheet.appendRow([token, username, Date.now() + SESSION_DURATION_MS]);
-      return { token: token, displayName: data[i][2] || username };
+      return { token: token, displayName: data[i][2] || username, role: data[i][4] || 'admin' };
     }
   }
   throw new Error('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
@@ -608,6 +625,102 @@ function logout(token) {
     }
   }
   return 'ok';
+}
+
+// ---- จัดการผู้ใช้หลายคน (เรียกผ่านหน้า "จัดการผู้ใช้" ในเว็บ — ต้องเป็น admin) ----
+
+function getUserRow(username) {
+  var sheet = getOrCreateUsersSheet();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === username) {
+      return {
+        rowIndex: i + 1, username: data[i][0], displayName: data[i][2],
+        active: data[i][3] !== false && String(data[i][3]).toUpperCase() !== 'FALSE',
+        role: data[i][4] || 'admin'
+      };
+    }
+  }
+  return null;
+}
+
+function requireAdmin(username) {
+  var u = getUserRow(username);
+  if (!u || u.role !== 'admin') throw new Error('เฉพาะผู้ดูแลระบบ (admin) เท่านั้นที่ทำรายการนี้ได้');
+}
+
+function countActiveAdmins() {
+  var sheet = getOrCreateUsersSheet();
+  var data = sheet.getDataRange().getValues();
+  var count = 0;
+  for (var i = 1; i < data.length; i++) {
+    var active = data[i][3] !== false && String(data[i][3]).toUpperCase() !== 'FALSE';
+    if (active && data[i][4] === 'admin') count++;
+  }
+  return count;
+}
+
+function listUsers() {
+  var sheet = getOrCreateUsersSheet();
+  var data = sheet.getDataRange().getValues();
+  var list = [];
+  for (var i = 1; i < data.length; i++) {
+    list.push({
+      username: data[i][0], displayName: data[i][2],
+      active: data[i][3] !== false && String(data[i][3]).toUpperCase() !== 'FALSE',
+      role: data[i][4] || 'admin'
+    });
+  }
+  return list;
+}
+
+function adminCreateUser(actingUsername, username, password, displayName, role) {
+  requireAdmin(actingUsername);
+  username = String(username || '').trim();
+  if (!username || !password) throw new Error('กรุณากรอก Username และ Password');
+  if (password.length < 4) throw new Error('รหัสผ่านสั้นเกินไป (อย่างน้อย 4 ตัวอักษร)');
+  if (getUserRow(username)) throw new Error('มี Username นี้อยู่แล้ว');
+  createOrUpdateUser(username, password, displayName, role === 'admin' ? 'admin' : 'staff');
+  return 'สร้างผู้ใช้ ' + username + ' เรียบร้อยแล้ว';
+}
+
+function adminUpdateUser(actingUsername, username, displayName, role, active) {
+  requireAdmin(actingUsername);
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var u = getUserRow(username);
+    if (!u) throw new Error('ไม่พบผู้ใช้นี้');
+    var newRole = (role === 'admin') ? 'admin' : 'staff';
+    var newActive = !!active;
+    var losingAdmin = (u.role === 'admin' && u.active) && (newRole !== 'admin' || !newActive);
+    if (losingAdmin && countActiveAdmins() <= 1) {
+      throw new Error('ไม่สามารถถอดสิทธิ์หรือปิดใช้งาน admin คนสุดท้ายของระบบได้');
+    }
+    var sheet = getOrCreateUsersSheet();
+    sheet.getRange(u.rowIndex, 3).setValue(displayName || u.displayName);
+    sheet.getRange(u.rowIndex, 4).setValue(newActive);
+    sheet.getRange(u.rowIndex, 5).setValue(newRole);
+    return 'บันทึกข้อมูลผู้ใช้ ' + username + ' เรียบร้อยแล้ว';
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function adminResetPassword(actingUsername, username, newPassword) {
+  requireAdmin(actingUsername);
+  if (!newPassword || newPassword.length < 4) throw new Error('รหัสผ่านใหม่สั้นเกินไป (อย่างน้อย 4 ตัวอักษร)');
+  var u = getUserRow(username);
+  if (!u) throw new Error('ไม่พบผู้ใช้นี้');
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sheet = getOrCreateUsersSheet();
+    sheet.getRange(u.rowIndex, 2).setValue(hashPassword(newPassword));
+    return 'รีเซ็ตรหัสผ่านของ ' + username + ' เรียบร้อยแล้ว';
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 
@@ -655,6 +768,10 @@ function handleApi(action, p) {
     var data;
     switch (action) {
       case 'logout':                 data = logout(p.sessionToken); break;
+      case 'listUsers':              requireAdmin(loggedInUser); data = listUsers(); break;
+      case 'createUser':             data = adminCreateUser(loggedInUser, p.username, p.password, p.displayName, p.role); break;
+      case 'updateUser':             data = adminUpdateUser(loggedInUser, p.username, p.displayName, p.role, p.active); break;
+      case 'resetUserPassword':      data = adminResetPassword(loggedInUser, p.username, p.newPassword); break;
       case 'getClinicInfo':          data = getClinicInfo(); break;
       case 'getDrugList':            data = getDrugList(); break;
       case 'getICD10Data':           data = getICD10Data(); break;

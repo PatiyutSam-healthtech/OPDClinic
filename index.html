@@ -153,6 +153,7 @@
       <li class="nav-item"><button class="nav-link" id="tab-register-btn" data-bs-toggle="pill" data-bs-target="#pills-register" onclick="loadRecentPatients()"><i class="bi bi-person-plus me-2"></i>ลงทะเบียนใหม่</button></li>
       <li class="nav-item"><button class="nav-link" id="tab-dashboard-btn" data-bs-toggle="pill" data-bs-target="#pills-dashboard" onclick="loadDashboard()"><i class="bi bi-bar-chart-fill me-2"></i>สรุปภาพรวม</button></li>
       <li class="nav-item"><button class="nav-link" id="tab-database-btn" data-bs-toggle="pill" data-bs-target="#pills-database" onclick="loadAllPatients()"><i class="bi bi-database-fill me-2"></i>ฐานข้อมูลคนไข้</button></li>
+      <li class="nav-item" id="tab-users-item" style="display:none;"><button class="nav-link" id="tab-users-btn" data-bs-toggle="pill" data-bs-target="#pills-users" onclick="loadUsers()"><i class="bi bi-people-fill me-2"></i>จัดการผู้ใช้</button></li>
     </ul>
     <div class="logout-area">
       <button class="btn btn-outline-light btn-sm w-100" onclick="handleLogout()"><i class="bi bi-box-arrow-right me-1"></i> ออกจากระบบ</button>
@@ -322,6 +323,82 @@
         </div>
         </div>
       </div>
+      <div class="tab-pane fade" id="pills-users">
+        <div class="page-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="text-primary fw-bold"><i class="bi bi-people-fill"></i> จัดการผู้ใช้งานระบบ</h5>
+          <div>
+            <button class="btn btn-sm btn-outline-secondary me-2" onclick="loadUsers()"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button>
+            <button class="btn btn-sm btn-primary" onclick="createUserModal.show()"><i class="bi bi-person-plus"></i> เพิ่มผู้ใช้ใหม่</button>
+          </div>
+        </div>
+        <div class="table-responsive">
+          <table class="table table-bordered table-hover">
+            <thead class="table-light"><tr><th>Username</th><th>ชื่อที่แสดง</th><th>สิทธิ์</th><th>สถานะ</th><th style="width:110px;">จัดการ</th></tr></thead>
+            <tbody id="usersTableBody"><tr><td colspan="5" class="text-center">กำลังโหลด...</td></tr></tbody>
+          </table>
+        </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="createUserModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="createUserForm" onsubmit="return submitCreateUser(event)">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title"><i class="bi bi-person-plus"></i> เพิ่มผู้ใช้ใหม่</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <div class="mb-3"><label class="form-label fw-bold">Username</label><input type="text" class="form-control" id="newUserUsername" required></div>
+          <div class="mb-3"><label class="form-label fw-bold">Password</label><input type="password" class="form-control" id="newUserPassword" required minlength="4"></div>
+          <div class="mb-3"><label class="form-label fw-bold">ชื่อที่แสดง</label><input type="text" class="form-control" id="newUserDisplayName"></div>
+          <div class="mb-3"><label class="form-label fw-bold">สิทธิ์</label>
+            <select class="form-select" id="newUserRole">
+              <option value="staff">พนักงาน (staff)</option>
+              <option value="admin">ผู้ดูแลระบบ (admin)</option>
+            </select>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึก</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="editUserModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="editUserForm" onsubmit="return submitEditUser(event)">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title"><i class="bi bi-pencil-square"></i> แก้ไขผู้ใช้: <span id="editUserUsernameLabel"></span></h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editUserUsername">
+          <div class="mb-3"><label class="form-label fw-bold">ชื่อที่แสดง</label><input type="text" class="form-control" id="editUserDisplayName"></div>
+          <div class="mb-3"><label class="form-label fw-bold">สิทธิ์</label>
+            <select class="form-select" id="editUserRole">
+              <option value="staff">พนักงาน (staff)</option>
+              <option value="admin">ผู้ดูแลระบบ (admin)</option>
+            </select>
+          </div>
+          <div class="form-check form-switch">
+            <input class="form-check-input" type="checkbox" id="editUserActive">
+            <label class="form-check-label" for="editUserActive">เปิดใช้งานบัญชีนี้</label>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึก</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -384,19 +461,25 @@
 
   const SESSION_KEY = 'clinic_session_token';
   const SESSION_NAME_KEY = 'clinic_display_name';
+  const SESSION_ROLE_KEY = 'clinic_role';
   var sessionToken = null;
+  var currentUserRole = null;
 
-  function saveSession(token, displayName) {
+  function saveSession(token, displayName, role) {
     sessionToken = token;
-    try { localStorage.setItem(SESSION_KEY, token); localStorage.setItem(SESSION_NAME_KEY, displayName || ''); } catch (e) {}
+    try {
+      localStorage.setItem(SESSION_KEY, token);
+      localStorage.setItem(SESSION_NAME_KEY, displayName || '');
+      localStorage.setItem(SESSION_ROLE_KEY, role || '');
+    } catch (e) {}
   }
   function clearSession() {
     sessionToken = null;
-    try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(SESSION_NAME_KEY); } catch (e) {}
+    try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(SESSION_NAME_KEY); localStorage.removeItem(SESSION_ROLE_KEY); } catch (e) {}
   }
   function restoreSession() {
-    try { return { token: localStorage.getItem(SESSION_KEY), name: localStorage.getItem(SESSION_NAME_KEY) }; }
-    catch (e) { return { token: null, name: null }; }
+    try { return { token: localStorage.getItem(SESSION_KEY), name: localStorage.getItem(SESSION_NAME_KEY), role: localStorage.getItem(SESSION_ROLE_KEY) }; }
+    catch (e) { return { token: null, name: null, role: null }; }
   }
 
   function callAPI(action, params) {
@@ -431,10 +514,12 @@
     else { el.style.display = 'none'; }
   }
 
-  function showApp(displayName) {
+  function showApp(displayName, role) {
     document.getElementById('loginScreen').style.display = 'none';
     document.getElementById('appShell').style.display = 'flex';
     document.getElementById('sidebarUserName').textContent = displayName || '';
+    currentUserRole = role || null;
+    document.getElementById('tab-users-item').style.display = (role === 'admin') ? '' : 'none';
   }
 
   function handleLogin(e) {
@@ -454,8 +539,8 @@
       .then(function (r) { return r.json(); })
       .then(function (res) {
         if (!res.ok) throw new Error(res.error || 'เข้าสู่ระบบไม่สำเร็จ');
-        saveSession(res.data.token, res.data.displayName);
-        showApp(res.data.displayName);
+        saveSession(res.data.token, res.data.displayName, res.data.role);
+        showApp(res.data.displayName, res.data.role);
         initAppData();
       })
       .catch(function (err) {
@@ -474,20 +559,23 @@
 
   var allDrugs = [];
   var icd10DB = [];
-  var candidateModal, historyModal;
+  var candidateModal, historyModal, createUserModal, editUserModal;
   var myChart = null;
   var allPatientsCache = [];
+  var usersCache = [];
 
   window.onload = function() {
     candidateModal = new bootstrap.Modal(document.getElementById('candidateModal'));
     historyModal = new bootstrap.Modal(document.getElementById('historyModal'));
+    createUserModal = new bootstrap.Modal(document.getElementById('createUserModal'));
+    editUserModal = new bootstrap.Modal(document.getElementById('editUserModal'));
     initThaiDateOptions('opd_d', 'opd_m');
     $.Thailand({ $district: $('#serv_tambon'), $amphoe: $('#serv_amphoe'), $province: $('#serv_province'), onDataFill: function(data){ setTimeout(combineServiceAddr, 100); } });
 
     var saved = restoreSession();
     if (saved.token) {
       sessionToken = saved.token;
-      showApp(saved.name);
+      showApp(saved.name, saved.role);
       initAppData();
     } else {
       showLogin();
@@ -774,6 +862,93 @@
   function preparePrint(d){ var now=new Date(); document.getElementById('p_date').innerText=now.toLocaleDateString('th-TH'); document.getElementById('p_hn').innerText=document.getElementById('opd_hn').value; document.getElementById('p_name').innerText=document.getElementById('opd_name').value; document.getElementById('p_age').innerText=document.getElementById('opd_age').value; document.getElementById('p_gender').innerText=document.getElementById('opd_gender').value; document.getElementById('p_cid').innerText=document.getElementById('opd_cid').value; document.getElementById('p_address').innerText=document.getElementById('opd_address_final').value; document.getElementById('p_allergy').innerText=document.getElementById('opd_allergy').value; document.getElementById('p_underlying').innerText=document.getElementById('opd_underlying').value; document.getElementById('p_bp').innerText=d.bp||'-'; document.getElementById('p_hr').innerText=d.hr||'-'; document.getElementById('p_rr').innerText=d.rr||'-'; document.getElementById('p_bt').innerText=d.bt||'-'; document.getElementById('p_bmi').innerText=d.bmi||'-'; document.getElementById('p_cc').innerText=d.cc||'-'; document.getElementById('p_pe').innerText=d.pe||'-'; document.getElementById('p_lab').innerText=d.lab||'-'; document.getElementById('p_dx').innerText=d.dx||'-'; document.getElementById('p_rx').innerText=d.rx||'-'; document.getElementById('p_doctor').innerText=d.doctor||'................'; }
   function printOld(d){ preparePrint(d); window.print(); }
   function submitRegister(e){ e.preventDefault(); Swal.showLoading(); var formObj = { hn: document.querySelector('input[name="hn"]').value, cid: document.querySelector('input[name="cid"]').value, dob: "", name: document.querySelector('input[name="name"]').value, gender: document.querySelector('select[name="gender"]').value, phone: document.querySelector('input[name="phone"]').value, address: "", allergy: document.querySelector('input[name="allergy"]').value, underlying: document.querySelector('input[name="underlying"]').value }; callAPI('registerPatient', { form: formObj }).then(res=>{ Swal.fire(res.includes('Error')?'Error':'Success',res,res.includes('Error')?'error':'success'); if(!res.includes('Error')){ document.getElementById('regForm').reset(); loadRecentPatients(); } }).catch(showApiError); }
+
+  // ==== จัดการผู้ใช้ (admin เท่านั้น) =======================================
+  function loadUsers() {
+    var tbody = document.getElementById('usersTableBody');
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center">กำลังโหลด...</td></tr>';
+    callAPI('listUsers').then(function(list) {
+      usersCache = list;
+      if (list.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">ไม่มีข้อมูล</td></tr>'; return; }
+      var html = '';
+      list.forEach(function(u) {
+        var roleBadge = u.role === 'admin' ? '<span class="badge bg-primary">ผู้ดูแลระบบ</span>' : '<span class="badge bg-secondary">พนักงาน</span>';
+        var activeBadge = u.active ? '<span class="badge bg-success">ใช้งานอยู่</span>' : '<span class="badge bg-danger">ปิดใช้งาน</span>';
+        html += `<tr>
+          <td>${u.username}</td>
+          <td>${u.displayName || '-'}</td>
+          <td>${roleBadge}</td>
+          <td>${activeBadge}</td>
+          <td class="text-nowrap">
+            <button class="btn btn-sm btn-outline-primary me-1" onclick="openEditUserByUsername('${u.username}')" title="แก้ไข"><i class="bi bi-pencil"></i></button>
+            <button class="btn btn-sm btn-outline-warning" onclick="resetPasswordPrompt('${u.username}')" title="รีเซ็ตรหัสผ่าน"><i class="bi bi-key"></i></button>
+          </td>
+        </tr>`;
+      });
+      tbody.innerHTML = html;
+    }).catch(showApiError);
+  }
+
+  function submitCreateUser(e) {
+    e.preventDefault();
+    var username = document.getElementById('newUserUsername').value.trim();
+    var password = document.getElementById('newUserPassword').value;
+    var displayName = document.getElementById('newUserDisplayName').value.trim();
+    var role = document.getElementById('newUserRole').value;
+    callAPI('createUser', { username: username, password: password, displayName: displayName, role: role })
+      .then(function(msg) {
+        Swal.fire('สำเร็จ', msg, 'success');
+        createUserModal.hide();
+        document.getElementById('createUserForm').reset();
+        loadUsers();
+      })
+      .catch(showApiError);
+    return false;
+  }
+
+  function openEditUserByUsername(username) {
+    var u = usersCache.find(function(x) { return x.username === username; });
+    if (!u) return;
+    document.getElementById('editUserUsername').value = u.username;
+    document.getElementById('editUserUsernameLabel').textContent = u.username;
+    document.getElementById('editUserDisplayName').value = u.displayName || '';
+    document.getElementById('editUserRole').value = u.role;
+    document.getElementById('editUserActive').checked = u.active;
+    editUserModal.show();
+  }
+
+  function submitEditUser(e) {
+    e.preventDefault();
+    var username = document.getElementById('editUserUsername').value;
+    var displayName = document.getElementById('editUserDisplayName').value.trim();
+    var role = document.getElementById('editUserRole').value;
+    var active = document.getElementById('editUserActive').checked;
+    callAPI('updateUser', { username: username, displayName: displayName, role: role, active: active })
+      .then(function(msg) {
+        Swal.fire('สำเร็จ', msg, 'success');
+        editUserModal.hide();
+        loadUsers();
+      })
+      .catch(showApiError);
+    return false;
+  }
+
+  function resetPasswordPrompt(username) {
+    Swal.fire({
+      title: 'รีเซ็ตรหัสผ่าน: ' + username,
+      input: 'password',
+      inputLabel: 'รหัสผ่านใหม่ (อย่างน้อย 4 ตัวอักษร)',
+      inputPlaceholder: 'รหัสผ่านใหม่',
+      showCancelButton: true,
+      confirmButtonText: 'บันทึก',
+      cancelButtonText: 'ยกเลิก'
+    }).then(function(result) {
+      if (!result.isConfirmed || !result.value) return;
+      callAPI('resetUserPassword', { username: username, newPassword: result.value })
+        .then(function(msg) { Swal.fire('สำเร็จ', msg, 'success'); })
+        .catch(showApiError);
+    });
+  }
 </script>
 </body>
 </html>
