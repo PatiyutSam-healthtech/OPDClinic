@@ -35,6 +35,29 @@ function getOrCreateOPDSheet() {
   return sheet;
 }
 
+// เพิ่มใหม่: ทำให้ Sheet เปล่าๆ ใช้งานได้ทันทีโดยไม่ต้องสร้าง Patients/Settings เอง
+// (จำเป็นสำหรับใช้เป็น "template" — ก็อปปี้ Sheet+Script ให้ลูกค้าใหม่แล้วรันได้เลย)
+function getOrCreatePatientsSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Patients');
+  if (!sheet) {
+    sheet = ss.insertSheet('Patients');
+    sheet.appendRow(['HN', 'CID', 'Name', 'DOB', 'Gender', 'Phone', 'Address', 'Allergy', 'Underlying']);
+  }
+  return sheet;
+}
+
+function getOrCreateSettingsSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Settings');
+  if (!sheet) {
+    sheet = ss.insertSheet('Settings');
+    sheet.appendRow(['ClinicName', 'Address', 'Phone', 'Hours']);
+    sheet.appendRow(['คลินิกของฉัน', 'แก้ไขที่อยู่ได้ที่ Sheet นี้', '0-0000-0000', '08:00 - 20:00']);
+  }
+  return sheet;
+}
+
 function safeDateStr(val) {
   if (!val) return "";
   try {
@@ -57,9 +80,7 @@ function calculateAgeFromStr(dobStr) {
 }
 
 function getClinicInfo() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('Settings');
-  if (!sheet) return { name: "คลินิกพยาบาล", address: "-", phone: "-", hours: "-" };
+  var sheet = getOrCreateSettingsSheet();
   var data = sheet.getRange(2, 1, 1, 4).getValues()[0];
   return { name: data[0], address: data[1], phone: data[2], hours: data[3] };
 }
@@ -118,7 +139,7 @@ function getICD10Data() {
 
 function getAllPatientsList() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('Patients');
+  var sheet = getOrCreatePatientsSheet();
   var data = sheet.getDataRange().getValues();
   var list = [];
   for (var i = 1; i < data.length; i++) {
@@ -136,7 +157,7 @@ function getPatientFullHistory(hn) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var hnClean = String(hn).replace(/'/g, "").trim();
 
-  var pSheet = ss.getSheetByName('Patients');
+  var pSheet = getOrCreatePatientsSheet();
   var pData = pSheet.getDataRange().getValues();
   var profile = null;
   for (var i = 1; i < pData.length; i++) {
@@ -178,7 +199,7 @@ function getPatientFullHistory(hn) {
 
 function getLastTenPatients() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var sheet = ss.getSheetByName('Patients');
+  var sheet = getOrCreatePatientsSheet();
   var data = sheet.getDataRange().getValues();
   if (data.length <= 1) return [];
   var rows = data.slice(1);
@@ -191,7 +212,7 @@ function registerPatient(form) {
   lock.waitLock(10000);
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName('Patients');
+    var sheet = getOrCreatePatientsSheet();
     var data = sheet.getDataRange().getValues();
     for (var i = 1; i < data.length; i++) {
       if (String(data[i][0]) == String(form.hn)) return "Error: HN นี้มีอยู่แล้ว";
@@ -208,7 +229,7 @@ function updateProfileOnly(form) {
   lock.waitLock(10000);
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var pSheet = ss.getSheetByName('Patients');
+    var pSheet = getOrCreatePatientsSheet();
     var pData = pSheet.getDataRange().getValues();
     var targetHN = String(form.opd_hn).trim().replace(/'/g, "");
 
@@ -235,7 +256,7 @@ function updateProfileOnly(form) {
 
 function searchPatientData(text) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
-  var pSheet = ss.getSheetByName('Patients');
+  var pSheet = getOrCreatePatientsSheet();
   var vSheet = getOrCreateOPDSheet();
   var pData = pSheet.getDataRange().getValues();
   var vData = vSheet.getDataRange().getValues();
@@ -303,7 +324,7 @@ function saveOPDVisit(form) {
   try {
     var ss = SpreadsheetApp.getActiveSpreadsheet();
     var vSheet = getOrCreateOPDSheet();
-    var pSheet = ss.getSheetByName('Patients');
+    var pSheet = getOrCreatePatientsSheet();
 
     var originalHN = String(form.original_hn).trim().replace(/'/g, "");
     var newHN = String(form.opd_hn).trim().replace(/'/g, "");
@@ -466,7 +487,7 @@ function getRecentActivity() {
 function getVisitByRow(rowIndex) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var vSheet = getOrCreateOPDSheet();
-  var pSheet = ss.getSheetByName('Patients');
+  var pSheet = getOrCreatePatientsSheet();
   var vData = vSheet.getRange(rowIndex, 1, 1, 24).getValues()[0];
   var hn = String(vData[1]).replace(/'/g, "");
 
