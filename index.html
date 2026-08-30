@@ -1,1 +1,600 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <base target="_top">
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+  <link rel="stylesheet" href="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dist/jquery.Thailand.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
+  <style>
+    body { background-color: #f4f7f6; font-family: 'Sarabun', sans-serif; position: relative; }
+    .dev-credit { position: absolute; top: 5px; right: 15px; font-size: 0.8rem; color: #6c757d; font-weight: 500; z-index: 1000; pointer-events: none; }
+    .container { max-width: 1000px; margin-top: 25px; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.1); }
+    .section-title { border-bottom: 2px solid #007bff; padding-bottom: 5px; margin-bottom: 15px; color: #007bff; font-weight: bold; }
+    .hn-table { font-size: 0.9rem; }
+    .hn-table thead { background-color: #e9ecef; }
+    .edit-mode-alert { display: none; margin-bottom: 15px; }
+    .candidate-row { cursor: pointer; }
+    .candidate-row:hover { background-color: #e2e6ea; }
+    .queue-card { cursor: pointer; transition: transform 0.2s; border-left: 5px solid #ffc107; }
+    .queue-card:hover { transform: scale(1.02); background-color: #fff9db; }
+    .queue-time { font-size: 0.8rem; color: gray; }
+    .tt-menu { background-color: #fff; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 5px 10px rgba(0,0,0,.2); margin-top: 5px; padding: 5px 0; max-height: 200px; overflow-y: auto; width: 100%; z-index: 1050; }
+    .tt-suggestion { padding: 3px 10px; cursor: pointer; font-size: 14px; }
+    .tt-suggestion:hover { background-color: #007bff; color: #fff; }
+    .icd-suggestion { position: absolute; background: white; border: 1px solid #ccc; width: 100%; max-height: 150px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 0 0 5px 5px; }
+    .icd-item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 0.9rem; }
+    .icd-item:hover { background-color: #e9ecef; color: #0d6efd; }
+    .icd-code-badge { font-weight: bold; color: #dc3545; margin-right: 5px; }
+    .stat-card { border-radius: 10px; border: none; color: white; transition: transform 0.2s; }
+    .stat-card:hover { transform: translateY(-5px); }
+    .bg-gradient-primary { background: linear-gradient(45deg, #4e73df, #224abe); }
+    .bg-gradient-success { background: linear-gradient(45deg, #1cc88a, #13855c); }
+    .bg-gradient-info { background: linear-gradient(45deg, #36b9cc, #258391); }
+    .icon-large { font-size: 2.5rem; opacity: 0.5; }
+
+    @media print {
+      body * { visibility: hidden; }
+      #printArea, #printArea * { visibility: visible; }
+      #printArea { position: absolute; left: 0; top: 0; width: 100%; padding: 10px 15px; background-color: white; color: #000; }
+      .no-print, .dev-credit { display: none !important; }
+      .clinic-header { text-align: center; border-bottom: 1px solid #000; margin-bottom: 5px; padding-bottom: 2px; }
+      .clinic-name { font-size: 18px; font-weight: bold; margin-bottom: 0; line-height: 1.2; }
+      .clinic-info { font-size: 11px; line-height: 1.2; }
+      .doc-title { text-align: center; font-weight: bold; font-size: 14px; margin-bottom: 5px; text-decoration: underline; }
+      .info-box { border: 1px solid #000; padding: 5px; margin-bottom: 5px; font-size: 12px; line-height: 1.4; }
+      .vs-box { border: 1px solid #000; padding: 3px 5px; margin: 3px 0; font-size: 12px; background: #f0f0f0 !important; -webkit-print-color-adjust: exact; }
+      .print-row { display: flex; margin-bottom: 2px; font-size: 12px; align-items: baseline; }
+      .print-label { font-weight: bold; margin-right: 5px; min-width: 70px; }
+      .print-value { flex-grow: 1; border-bottom: 1px dotted #999; padding-left: 5px; }
+      .rx-container { margin-top: 5px; }
+      .rx-box { border: 1px solid #ccc; min-height: 50px; padding: 5px; white-space: pre-line; font-size: 12px; line-height: 1.3; }
+      .signature-area { margin-top: 15px; text-align: right; font-size: 12px; }
+    }
+    #printArea { display: none; }
+    @media print { #printArea { display: block; } }
+  </style>
+</head>
+<body>
+
+<div class="dev-credit">Developed by Patiyut Aupapong</div>
+
+<div class="container no-print">
+  <h3 class="text-center mb-4"><i class="bi bi-hospital-fill text-danger"></i> ระบบคลินิกครบวงจร</h3>
+
+  <ul class="nav nav-pills mb-3 justify-content-center" id="mainTab">
+    <li class="nav-item"><button class="nav-link active" id="tab-service-btn" data-bs-toggle="pill" data-bs-target="#pills-service">1. ตรวจรักษา</button></li>
+    <li class="nav-item"><button class="nav-link" id="tab-queue-btn" data-bs-toggle="pill" data-bs-target="#pills-queue" onclick="loadQueue()">2. คิวรอตรวจ <span id="queueCount" class="badge bg-danger">0</span></button></li>
+    <li class="nav-item"><button class="nav-link" id="tab-recent-btn" data-bs-toggle="pill" data-bs-target="#pills-recent" onclick="loadRecentActivity()">3. ประวัติล่าสุด (50)</button></li>
+    <li class="nav-item"><button class="nav-link" id="tab-register-btn" data-bs-toggle="pill" data-bs-target="#pills-register" onclick="loadRecentPatients()">4. ลงทะเบียนใหม่</button></li>
+    <li class="nav-item"><button class="nav-link" id="tab-dashboard-btn" data-bs-toggle="pill" data-bs-target="#pills-dashboard" onclick="loadDashboard()">5. สรุปภาพรวม</button></li>
+    <li class="nav-item"><button class="nav-link" id="tab-database-btn" data-bs-toggle="pill" data-bs-target="#pills-database" onclick="loadAllPatients()">6. ฐานข้อมูลคนไข้</button></li>
+  </ul>
+
+  <div class="tab-content">
+
+    <div class="tab-pane fade show active" id="pills-service">
+      <div class="input-group mb-3">
+        <input type="text" id="searchText" class="form-control" placeholder="พิมพ์ HN, เลขบัตร หรือ ชื่อ...">
+        <button class="btn btn-primary" onclick="searchPatient()">ค้นหา</button>
+      </div>
+
+      <div id="serviceArea" style="display:none;">
+        <div class="alert alert-warning edit-mode-alert" id="editAlert">
+          <strong id="editMsg"><i class="bi bi-pencil-square"></i> กำลังแก้ไขประวัติเก่า</strong>
+          <button class="btn btn-sm btn-outline-dark ms-3" onclick="cancelEdit()">ล้างค่า (เริ่มใหม่)</button>
+        </div>
+
+        <form id="opdForm" onsubmit="return false;">
+          <input type="hidden" name="opd_row_index" id="opd_row_index">
+          <input type="hidden" name="original_hn" id="original_hn">
+          <input type="hidden" name="visit_status" id="visit_status">
+          <input type="hidden" name="opd_dob" id="opd_dob">
+
+          <div class="section-title">ข้อมูลผู้ป่วย</div>
+          <div class="row g-2 mb-3">
+            <div class="col-md-2"><label class="text-primary fw-bold">HN</label><input type="text" class="form-control" name="opd_hn" id="opd_hn"></div>
+            <div class="col-md-3"><label class="text-primary fw-bold">CID</label><input type="text" class="form-control" name="opd_cid" id="opd_cid" maxlength="17" oninput="autoFormatCID(this)"></div>
+            <div class="col-md-3"><label class="text-primary fw-bold">ชื่อ-สกุล</label><input type="text" class="form-control" name="opd_name" id="opd_name"></div>
+            <div class="col-md-3">
+              <label class="text-primary fw-bold">วันเกิด (พ.ศ.)</label>
+              <div class="input-group input-group-sm">
+                <select class="form-select" id="opd_d" onchange="updateDobService()" style="width:25%"></select>
+                <select class="form-select" id="opd_m" onchange="updateDobService()" style="width:35%"></select>
+                <input type="number" class="form-control" id="opd_y" placeholder="25XX" onchange="updateDobService()" style="width:40%">
+              </div>
+            </div>
+            <div class="col-md-1"><label>อายุ</label><input type="text" class="form-control" name="opd_age" id="opd_age" readonly style="background:#f0f0f0;"></div>
+            <div class="col-md-3"><label class="text-primary fw-bold">เพศ</label><select class="form-select" name="opd_gender" id="opd_gender"><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>
+            <div class="col-md-3"><label class="text-primary fw-bold">เบอร์โทร</label><input type="text" class="form-control" name="opd_phone" id="opd_phone"></div>
+            <div class="col-md-12 mt-2">
+              <label class="text-primary fw-bold">ที่อยู่ (ค้นหาด่วน)</label>
+              <div class="card p-2 bg-light border-0 mb-2">
+                <div class="row g-1">
+                   <div class="col-3"><input type="text" class="form-control form-control-sm" id="serv_addr_detail" placeholder="บ้านเลขที่/หมู่" oninput="combineServiceAddr()"></div>
+                   <div class="col-3"><input type="text" class="form-control form-control-sm" id="serv_tambon" placeholder="ตำบล/แขวง" onchange="combineServiceAddr()"></div>
+                   <div class="col-3"><input type="text" class="form-control form-control-sm" id="serv_amphoe" placeholder="อำเภอ/เขต" onchange="combineServiceAddr()"></div>
+                   <div class="col-3"><input type="text" class="form-control form-control-sm" id="serv_province" placeholder="จังหวัด" onchange="combineServiceAddr()"></div>
+                </div>
+              </div>
+              <input type="text" class="form-control" name="opd_address" id="opd_address_final" placeholder="ที่อยู่เต็ม">
+            </div>
+          </div>
+
+          <div class="row g-2 mb-3">
+            <div class="col-md-6"><label class="text-danger fw-bold">แพ้ยา</label><input type="text" class="form-control text-danger" name="opd_allergy" id="opd_allergy"></div>
+            <div class="col-md-6"><label class="text-primary fw-bold">โรคประจำตัว</label><input type="text" class="form-control" name="opd_underlying" id="opd_underlying"></div>
+            <div class="col-12 mt-2">
+              <button type="button" class="btn btn-sm btn-outline-info w-100" onclick="updateProfileOnly()">
+                <i class="bi bi-person-lines-fill"></i> บันทึกแก้ไขประวัติ (รวมแพ้ยา/โรค - ไม่สร้างประวัติการตรวจ)
+              </button>
+            </div>
+          </div>
+
+          <div class="section-title">บันทึกผลตรวจ</div>
+          <div class="row g-2 mb-3"><div class="col-md-12"><label class="fw-bold">อาการ (CC)</label><input type="text" class="form-control" name="cc" id="cc"></div></div>
+          <div class="card bg-light mb-3 border-0"><div class="card-body py-2"><label class="fw-bold mb-2">สัญญาณชีพ (V/S) และ BMI</label>
+               <div class="row g-2">
+                 <div class="col-3"><input type="text" class="form-control form-control-sm" name="bp" id="bp" placeholder="BP"></div>
+                 <div class="col-3"><input type="text" class="form-control form-control-sm" name="hr" id="hr" placeholder="HR"></div>
+                 <div class="col-3"><input type="text" class="form-control form-control-sm" name="rr" id="rr" placeholder="RR"></div>
+                 <div class="col-3"><input type="text" class="form-control form-control-sm" name="bt" id="bt" placeholder="Temp"></div>
+                 <div class="col-3"><input type="number" class="form-control form-control-sm" name="bw" id="bw" placeholder="นน. (kg)" oninput="calcBMI()"></div>
+                 <div class="col-3"><input type="number" class="form-control form-control-sm" name="ht" id="ht" placeholder="สส. (cm)" oninput="calcBMI()"></div>
+                 <div class="col-3"><input type="text" class="form-control form-control-sm" name="bmi" id="bmi" placeholder="BMI" readonly style="background:#e9ecef; font-weight:bold; color:#0d6efd;"></div>
+               </div></div></div>
+
+          <div class="row g-2 mb-3"><div class="col-md-6"><label class="fw-bold">ตรวจร่างกาย (PE)</label><textarea class="form-control" name="pe" id="pe" rows="2"></textarea></div><div class="col-md-6"><label class="fw-bold">ผล Lab</label><textarea class="form-control" name="lab" id="lab" rows="2"></textarea></div>
+          <div class="col-md-12 position-relative">
+            <label class="fw-bold">วินิจฉัย (Dx)</label>
+            <input type="text" class="form-control" name="dx" id="dx" placeholder="ค้นหาชื่อโรค..." onkeyup="searchICD10(this.value)" autocomplete="off">
+            <div id="icd10List" class="icd-suggestion"></div>
+          </div>
+          </div>
+          <div class="card border-info mb-3"><div class="card-header bg-info text-white py-1 small">เลือกยา (Drug Selector)</div><div class="card-body p-2"><div class="row g-2 align-items-end"><div class="col-md-5"><input class="form-control form-control-sm" list="drugListOptions" id="drugInput" placeholder="พิมพ์ชื่อยา..." onchange="autoFillUsage()"><datalist id="drugListOptions"></datalist></div><div class="col-md-5"><input type="text" class="form-control form-control-sm" id="drugUsage" placeholder="วิธีใช้..."></div><div class="col-md-2"><button type="button" class="btn btn-sm btn-primary w-100" onclick="addDrugToRx()">+ เพิ่ม</button></div></div></div></div>
+          <div class="row g-2 mb-3"><div class="col-md-12"><label class="fw-bold">รักษา/ยา (Rx)</label><textarea class="form-control" name="rx" id="rx" rows="4"></textarea></div><div class="col-md-4 offset-md-8"><label>ผู้ตรวจ</label><input type="text" class="form-control" name="doctor" id="doctor"></div></div>
+
+          <div class="row g-2">
+            <div class="col-12"><button type="button" class="btn btn-primary w-100 py-2 mb-2" onclick="saveOPD('NEW_CASE', 'Waiting')"><i class="bi bi-person-plus"></i> ส่งเข้าคิว (สร้างรายการใหม่)</button></div>
+            <div class="col-6"><button type="button" class="btn btn-success w-100 py-2" onclick="saveOPD('NEW_CASE', 'Completed')"><i class="bi bi-check-circle"></i> จบเคส (สร้างใหม่)</button></div>
+            <div class="col-6"><button type="button" class="btn btn-warning w-100 py-2" onclick="saveOPD('UPDATE_CASE', 'Completed')"><i class="bi bi-pencil-square"></i> จบเคส (แก้ไขใบเดิม)</button></div>
+          </div>
+
+        </form>
+        <hr><h5 class="text-secondary mt-4">ประวัติย้อนหลัง</h5><div id="historyList"></div>
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="pills-dashboard">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="text-primary fw-bold"><i class="bi bi-bar-chart-fill"></i> สรุปภาพรวมคลินิก</h5>
+        <button class="btn btn-sm btn-outline-secondary" onclick="loadDashboard()"><i class="bi bi-arrow-clockwise"></i> อัปเดตข้อมูล</button>
+      </div>
+      <div class="row g-3 mb-4">
+        <div class="col-md-4"><div class="card stat-card bg-gradient-success p-3"><div class="d-flex justify-content-between align-items-center"><div><h6 class="mb-0">คนไข้วันนี้</h6><h2 class="mb-0 fw-bold" id="stat-today">0</h2></div><i class="bi bi-people-fill icon-large"></i></div></div></div>
+        <div class="col-md-4"><div class="card stat-card bg-gradient-info p-3"><div class="d-flex justify-content-between align-items-center"><div><h6 class="mb-0">คนไข้เดือนนี้</h6><h2 class="mb-0 fw-bold" id="stat-month">0</h2></div><i class="bi bi-calendar-check-fill icon-large"></i></div></div></div>
+        <div class="col-md-4"><div class="card stat-card bg-gradient-primary p-3"><div class="d-flex justify-content-between align-items-center"><div><h6 class="mb-0">คนไข้สะสม</h6><h2 class="mb-0 fw-bold" id="stat-total">0</h2></div><i class="bi bi-person-vcard-fill icon-large"></i></div></div></div>
+      </div>
+      <div class="row g-3">
+        <div class="col-md-8"><div class="card shadow-sm h-100"><div class="card-header bg-white fw-bold">📉 แนวโน้มคนไข้ (7 วันล่าสุด)</div><div class="card-body"><canvas id="dailyChart"></canvas></div></div></div>
+        <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-header bg-white fw-bold">🏆 5 โรคที่พบบ่อย</div><div class="card-body"><ul class="list-group list-group-flush" id="topDxList"><li class="list-group-item text-center text-muted">กำลังโหลด...</li></ul></div></div></div>
+      </div>
+    </div>
+
+    <div class="tab-pane fade" id="pills-queue"><div class="d-flex justify-content-between align-items-center mb-3"><h5 class="text-primary mb-0">รายการคิวรอตรวจ</h5><button class="btn btn-sm btn-outline-secondary" onclick="loadQueue()"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button></div><div id="queueListArea">กำลังโหลดคิว...</div></div>
+    <div class="tab-pane fade" id="pills-recent"><div class="d-flex justify-content-between align-items-center mb-3"><h5 class="text-primary mb-0">ประวัติล่าสุด (50)</h5><button class="btn btn-sm btn-outline-secondary" onclick="loadRecentActivity()"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button></div><div class="table-responsive"><table class="table table-bordered table-hover"><thead class="table-light"><tr><th>เวลา</th><th>HN</th><th>ชื่อ</th><th>Dx</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="recentActivityBody"><tr><td colspan="6" class="text-center">กำลังโหลด...</td></tr></tbody></table></div></div>
+    <div class="tab-pane fade" id="pills-register">
+       <form id="regForm" onsubmit="submitRegister(event)">
+        <div class="row g-3">
+          <div class="col-md-4"><label>HN</label><input type="text" class="form-control border-primary" name="hn" required placeholder="กำหนดเอง"></div>
+          <div class="col-md-4"><label>CID</label><input type="text" class="form-control" name="cid" required maxlength="17" oninput="autoFormatCID(this)"></div>
+          <div class="col-md-4"><label>เบอร์โทร</label><input type="text" class="form-control" name="phone"></div>
+          <div class="col-md-6"><label>ชื่อ-สกุล</label><input type="text" class="form-control" name="name" required></div>
+          <div class="col-md-6"><label>เพศ</label><select class="form-select" name="gender"><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>
+          <div class="col-md-6"><label>แพ้ยา</label><input type="text" class="form-control" name="allergy" placeholder="-"></div>
+          <div class="col-md-6"><label>โรคประจำตัว</label><input type="text" class="form-control" name="underlying" placeholder="-"></div>
+          <div class="col-12"><button type="submit" class="btn btn-primary w-100 mt-2">ลงทะเบียน</button></div>
+        </div>
+      </form>
+      <hr class="my-4"><h5 class="text-secondary">📋 รายชื่อคนไข้ล่าสุด</h5>
+      <div class="table-responsive"><table class="table table-bordered table-hover hn-table"><thead><tr><th>HN</th><th>ชื่อ-นามสกุล</th><th>เลขบัตร</th></tr></thead><tbody id="recentPatientsBody"><tr><td colspan="3" class="text-center">กำลังโหลด...</td></tr></tbody></table></div>
+    </div>
+    <div class="tab-pane fade" id="pills-database">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h5 class="text-primary fw-bold"><i class="bi bi-database-fill"></i> ฐานข้อมูลคนไข้ทั้งหมด</h5>
+        <button class="btn btn-sm btn-outline-primary" onclick="loadAllPatients()"><i class="bi bi-arrow-clockwise"></i> โหลดข้อมูลใหม่</button>
+      </div>
+      <div class="mb-3">
+        <input type="text" class="form-control" id="dbSearch" placeholder="🔍 พิมพ์เพื่อค้นหา (ชื่อ, HN, เบอร์โทร)..." onkeyup="filterPatientTable()">
+      </div>
+      <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+        <table class="table table-bordered table-hover" id="patientTable">
+          <thead class="table-light sticky-top">
+            <tr>
+              <th>HN</th>
+              <th>ชื่อ-นามสกุล</th>
+              <th>เลขบัตร (CID)</th>
+              <th>เบอร์โทร</th>
+              <th style="width: 100px;">จัดการ</th>
+            </tr>
+          </thead>
+          <tbody id="patientTableBody">
+            <tr><td colspan="5" class="text-center text-muted">กำลังโหลดข้อมูล...</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="candidateModal" tabindex="-1"><div class="modal-dialog modal-lg"><div class="modal-content"><div class="modal-header bg-warning"><h5 class="modal-title">พบรายชื่อใกล้เคียง</h5><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div><div class="modal-body"><div class="table-responsive"><table class="table table-bordered table-hover"><thead class="table-light"><tr><th>HN</th><th>ชื่อ-นามสกุล</th><th>CID</th><th>เบอร์โทร</th></tr></thead><tbody id="candidateList"></tbody></table></div></div></div></div></div>
+
+<div class="modal fade" id="historyModal" tabindex="-1">
+  <div class="modal-dialog modal-xl">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-file-medical"></i> ประวัติการรักษา: <span id="hist_name"></span></h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body bg-light">
+        <div class="card mb-3 shadow-sm border-0">
+          <div class="card-body">
+            <div class="row">
+              <div class="col-md-3 border-end">
+                <div class="text-center mb-2"><i class="bi bi-person-circle" style="font-size: 4rem; color: #ccc;"></i></div>
+                <h5 class="text-center fw-bold text-primary" id="hist_hn">HN: -</h5>
+              </div>
+              <div class="col-md-9">
+                <div class="row g-2">
+                  <div class="col-4"><strong>CID:</strong> <span id="hist_cid">-</span></div>
+                  <div class="col-4"><strong>เพศ:</strong> <span id="hist_gender">-</span></div>
+                  <div class="col-4"><strong>วันเกิด:</strong> <span id="hist_dob">-</span></div>
+                  <div class="col-4"><strong>เบอร์โทร:</strong> <span id="hist_phone">-</span></div>
+                  <div class="col-8"><strong>ที่อยู่:</strong> <span id="hist_address">-</span></div>
+                  <div class="col-12 mt-2 pt-2 border-top">
+                    <span class="badge bg-danger me-2" style="font-size:0.9rem">แพ้ยา: <span id="hist_allergy">-</span></span>
+                    <span class="badge bg-warning text-dark" style="font-size:0.9rem">โรคประจำตัว: <span id="hist_underlying">-</span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <h6 class="fw-bold text-secondary ms-2"><i class="bi bi-clock-history"></i> ประวัติการตรวจย้อนหลัง</h6>
+        <div class="accordion" id="visitAccordion"><div class="text-center p-3">กำลังโหลด...</div></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button></div>
+    </div>
+  </div>
+</div>
+
+<div id="printArea"><div class="clinic-header"><div class="clinic-name" id="c_name"></div><div class="clinic-info">ที่อยู่: <span id="c_address"></span> โทร: <span id="c_phone"></span> เวลา: <span id="c_hours"></span></div></div><div class="doc-title">ใบบันทึกการตรวจรักษา (OPD Card)</div><div style="text-align:right; font-size:11px; margin-bottom: 2px;">วันที่: <span id="p_date"></span></div><div class="info-box"><div class="row g-0"><div class="col-6"><strong>HN:</strong> <span id="p_hn"></span></div><div class="col-6"><strong>ชื่อ:</strong> <span id="p_name"></span></div><div class="col-4"><strong>อายุ:</strong> <span id="p_age"></span> ปี</div><div class="col-4"><strong>เพศ:</strong> <span id="p_gender"></span></div><div class="col-4"><strong>CID:</strong> <span id="p_cid"></span></div><div class="col-12"><strong>ที่อยู่:</strong> <span id="p_address"></span></div><div class="col-12" style="border-top:1px dotted #ccc; margin-top:2px; padding-top:2px;"><strong>แพ้:</strong> <span id="p_allergy" style="color:red; font-weight:bold;"></span> | <strong>โรคประจำตัว:</strong> <span id="p_underlying"></span></div></div></div><div class="vs-box"><strong>V/S:</strong> BP:<span id="p_bp"></span> | PR:<span id="p_hr"></span> | RR:<span id="p_rr"></span> | T:<span id="p_bt"></span> | BMI:<span id="p_bmi"></span></div><div class="print-row"><div class="print-label">CC:</div><div class="print-value" id="p_cc"></div></div><div class="print-row"><div class="print-label">PE:</div><div class="print-value" id="p_pe"></div></div><div class="print-row"><div class="print-label">Lab:</div><div class="print-value" id="p_lab"></div></div><div class="print-row"><div class="print-label">Dx:</div><div class="print-value" id="p_dx"></div></div><div class="rx-container"><div style="font-weight:bold; font-size:12px;">Rx / การรักษา:</div><div class="rx-box" id="p_rx"></div></div><div class="signature-area">ลงชื่อผู้ตรวจ: ( <span id="p_doctor"></span> )</div></div>
+
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+<script type="text/javascript" src="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dependencies/JQL.min.js"></script>
+<script type="text/javascript" src="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dependencies/typeahead.bundle.js"></script>
+<script type="text/javascript" src="https://earthchie.github.io/jquery.Thailand.js/jquery.Thailand.js/dist/jquery.Thailand.min.js"></script>
+
+<script>
+  // ==== API CONFIG ==========================================================
+  // TODO: แก้ 2 ค่านี้ให้ตรงกับ Web App deployment ของคุณ (ดู SETUP.md)
+  const API_URL   = 'https://script.google.com/macros/s/PUT_YOUR_DEPLOYMENT_ID_HERE/exec';
+  const API_TOKEN = 'PUT_YOUR_SECRET_TOKEN_HERE';
+
+  function callAPI(action, params) {
+    return fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // กัน CORS preflight บน Apps Script
+      body: JSON.stringify(Object.assign({ action: action, token: API_TOKEN }, params || {}))
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.error || 'API Error');
+        return res.data;
+      });
+  }
+
+  function showApiError(err) {
+    console.error(err);
+    Swal.fire('เกิดข้อผิดพลาด', err.message || String(err), 'error');
+  }
+  // ===========================================================================
+
+  var allDrugs = [];
+  var icd10DB = [];
+  var candidateModal, historyModal;
+  var myChart = null;
+  var allPatientsCache = [];
+
+  window.onload = function() {
+    candidateModal = new bootstrap.Modal(document.getElementById('candidateModal'));
+    historyModal = new bootstrap.Modal(document.getElementById('historyModal'));
+    initThaiDateOptions('opd_d', 'opd_m');
+    $.Thailand({ $district: $('#serv_tambon'), $amphoe: $('#serv_amphoe'), $province: $('#serv_province'), onDataFill: function(data){ setTimeout(combineServiceAddr, 100); } });
+
+    callAPI('getClinicInfo').then(function(info) { if(info) { document.getElementById('c_name').innerText = info.name; document.getElementById('c_address').innerText = info.address; document.getElementById('c_phone').innerText = info.phone; document.getElementById('c_hours').innerText = info.hours; } }).catch(showApiError);
+    callAPI('getDrugList').then(function(drugs) { allDrugs = drugs; var dList = document.getElementById('drugListOptions'); var opt=''; drugs.forEach(d=>{opt+=`<option value="${d.name}">`;}); dList.innerHTML=opt; }).catch(showApiError);
+    callAPI('getICD10Data').then(function(list) { icd10DB = list; }).catch(showApiError);
+    loadRecentPatients(); loadQueue(); loadRecentActivity(); loadDashboard();
+  };
+
+  // --- Database Logic ---
+  function loadAllPatients() {
+    var tbody = document.getElementById('patientTableBody');
+    tbody.innerHTML = '<tr><td colspan="5" class="text-center">กำลังโหลดข้อมูล... <div class="spinner-border spinner-border-sm text-primary"></div></td></tr>';
+    callAPI('getAllPatientsList').then(function(list) {
+      allPatientsCache = list;
+      renderPatientTable(list);
+    }).catch(showApiError);
+  }
+
+  function renderPatientTable(list) {
+    var tbody = document.getElementById('patientTableBody');
+    if(list.length === 0) { tbody.innerHTML = '<tr><td colspan="5" class="text-center text-muted">ไม่พบข้อมูล</td></tr>'; return; }
+    var html = '';
+    list.forEach(p => {
+      html += `<tr>
+        <td>${p.hn}</td>
+        <td>${p.name}</td>
+        <td>${p.cid}</td>
+        <td>${p.phone}</td>
+        <td><button class="btn btn-sm btn-info text-white w-100" onclick="viewHistory('${p.hn}')"><i class="bi bi-eye"></i> ดูประวัติ</button></td>
+      </tr>`;
+    });
+    tbody.innerHTML = html;
+  }
+
+  function filterPatientTable() {
+    var txt = document.getElementById('dbSearch').value.toLowerCase();
+    var filtered = allPatientsCache.filter(p =>
+      p.name.toLowerCase().includes(txt) ||
+      p.hn.toLowerCase().includes(txt) ||
+      p.phone.includes(txt)
+    );
+    renderPatientTable(filtered);
+  }
+
+  function viewHistory(hn) {
+    historyModal.show();
+    document.getElementById('visitAccordion').innerHTML = '<div class="text-center p-4">กำลังดึงข้อมูลประวัติ... <div class="spinner-border text-primary"></div></div>';
+
+    callAPI('getPatientFullHistory', { hn: hn }).then(function(data) {
+      if(!data.profile) { alert('ไม่พบข้อมูล'); return; }
+
+      document.getElementById('hist_name').innerText = data.profile.name;
+      document.getElementById('hist_hn').innerText = data.profile.hn;
+      document.getElementById('hist_cid').innerText = data.profile.cid;
+      document.getElementById('hist_gender').innerText = data.profile.gender;
+      document.getElementById('hist_dob').innerText = data.profile.dob || '-';
+      document.getElementById('hist_phone').innerText = data.profile.phone;
+      document.getElementById('hist_address').innerText = data.profile.address || '-';
+      document.getElementById('hist_allergy').innerText = data.profile.allergy || 'ปฏิเสธ';
+      document.getElementById('hist_underlying').innerText = data.profile.underlying || 'ปฏิเสธ';
+
+      var vHtml = '';
+      if(data.visits.length === 0) {
+        vHtml = '<div class="alert alert-secondary text-center">ยังไม่มีประวัติการรักษา</div>';
+      } else {
+        data.visits.forEach((v, idx) => {
+          var id = 'collapse' + idx;
+          vHtml += `<div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button ${idx!==0?'collapsed':''}" type="button" data-bs-toggle="collapse" data-bs-target="#${id}">
+                <span class="me-3 fw-bold">${v.date}</span>
+                <span class="badge bg-success me-2">${v.dx.split(':')[0]}</span>
+                <span class="text-muted small">${v.cc.substring(0,30)}...</span>
+              </button>
+            </h2>
+            <div id="${id}" class="accordion-collapse collapse ${idx===0?'show':''}" data-bs-parent="#visitAccordion">
+              <div class="accordion-body">
+                <div class="row g-2 small">
+                  <div class="col-12"><strong>CC:</strong> ${v.cc}</div>
+                  <div class="col-12"><strong>V/S:</strong> BP:${v.bp} | PR:${v.hr} | T:${v.bt} | BMI:${v.bmi}</div>
+                  <div class="col-12"><strong>PE:</strong> ${v.pe}</div>
+                  <div class="col-12"><strong>Dx:</strong> ${v.dx}</div>
+                  <div class="col-12 bg-light p-2 rounded"><strong>Rx:</strong><br>${v.rx.replace(/\n/g,'<br>')}</div>
+                  <div class="col-12 text-end text-muted mt-2">ผู้ตรวจ: ${v.doctor}</div>
+                  <div class="col-12 text-end border-top pt-2 mt-2">
+                    <button class="btn btn-sm btn-outline-warning me-2" onclick="editFromHistory(${v.rowIndex})"><i class="bi bi-pencil-square"></i> แก้ไขหน้านี้</button>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="printFromRow(${v.rowIndex})"><i class="bi bi-printer"></i> พิมพ์ใบ OPD</button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>`;
+        });
+      }
+      document.getElementById('visitAccordion').innerHTML = vHtml;
+
+    }).catch(showApiError);
+  }
+
+  function editFromHistory(rowIndex) {
+    historyModal.hide();
+    selectQueue(rowIndex);
+  }
+
+  function loadDashboard() { callAPI('getDashboardStats').then(renderDashboard).catch(showApiError); }
+  function renderDashboard(stats) {
+    document.getElementById('stat-today').innerText = stats.todayCount;
+    document.getElementById('stat-month').innerText = stats.monthCount;
+    document.getElementById('stat-total').innerText = stats.totalCount;
+    var ctx = document.getElementById('dailyChart').getContext('2d');
+    if (myChart) myChart.destroy();
+    myChart = new Chart(ctx, { type: 'bar', data: { labels: stats.chartDaily.dates, datasets: [{ label: 'จำนวนคนไข้', data: stats.chartDaily.counts, backgroundColor: 'rgba(54, 162, 235, 0.6)', borderColor: 'rgba(54, 162, 235, 1)', borderWidth: 1 }] }, options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } } });
+    var dxHtml = ''; if (stats.topDx.length === 0) { dxHtml = '<li class="list-group-item text-center">ไม่มีข้อมูล</li>'; } else { stats.topDx.forEach((dx, index) => { dxHtml += `<li class="list-group-item d-flex justify-content-between align-items-center">${index+1}. ${dx[0]} <span class="badge bg-primary rounded-pill">${dx[1]}</span></li>`; }); } document.getElementById('topDxList').innerHTML = dxHtml;
+  }
+
+  function calcBMI() {
+    var bw = parseFloat(document.getElementById('bw').value);
+    var ht = parseFloat(document.getElementById('ht').value);
+    if(bw > 0 && ht > 0) {
+      var bmi = bw / ((ht/100) * (ht/100));
+      document.getElementById('bmi').value = bmi.toFixed(2);
+    } else { document.getElementById('bmi').value = ""; }
+  }
+
+  function updateProfileOnly() {
+    var form = document.getElementById('opdForm');
+    var formData = {};
+    for(var i=0; i<form.elements.length; i++){ if(form.elements[i].name) formData[form.elements[i].name] = form.elements[i].value; }
+    Swal.fire({title:'กำลังอัปเดต...', didOpen:()=>{Swal.showLoading()}});
+    callAPI('updateProfileOnly', { form: formData }).then(res => { Swal.fire('สำเร็จ', res, 'success'); }).catch(showApiError);
+  }
+
+  function searchICD10(val) {
+    var listDiv = document.getElementById('icd10List');
+    listDiv.innerHTML = ''; listDiv.style.display = 'none';
+    if (!val || val.trim().length < 2) return;
+    var keywords = val.toLowerCase().split(' ').filter(k => k !== '');
+    var matches = icd10DB.filter(item => {
+      var content = (item.code + " " + item.desc).toLowerCase();
+      return keywords.every(k => content.includes(k));
+    }).slice(0, 15);
+    if (matches.length > 0) {
+      matches.forEach(item => {
+        var div = document.createElement('div');
+        div.className = 'icd-item';
+        div.innerHTML = `<span class="icd-code-badge">${item.code}</span> ${item.desc}`;
+        div.onclick = function() { document.getElementById('dx').value = item.desc; listDiv.style.display = 'none'; };
+        listDiv.appendChild(div);
+      });
+      listDiv.style.display = 'block';
+    }
+  }
+  document.addEventListener('click', function(e) { if (e.target.id !== 'dx') { document.getElementById('icd10List').style.display = 'none'; } });
+
+  function combineServiceAddr() {
+    var detail = document.getElementById('serv_addr_detail').value || "";
+    var tambon = document.getElementById('serv_tambon').value || "";
+    var amphoe = document.getElementById('serv_amphoe').value || "";
+    var province = document.getElementById('serv_province').value || "";
+    var full = detail; if(tambon) full += " ต." + tambon; if(amphoe) full += " อ." + amphoe; if(province) full += " จ." + province;
+    document.getElementById('opd_address_final').value = full;
+  }
+
+  function autoFormatCID(input) {
+    var value = input.value.replace(/\D/g, '');
+    var formatted = '';
+    if (value.length > 0) formatted += value.substring(0, 1); if (value.length > 1) formatted += '-' + value.substring(1, 5); if (value.length > 5) formatted += '-' + value.substring(5, 10); if (value.length > 10) formatted += '-' + value.substring(10, 12); if (value.length > 12) formatted += '-' + value.substring(12, 13);
+    input.value = formatted;
+  }
+
+  function initThaiDateOptions(dayId, monthId) {
+    var dSel = document.getElementById(dayId); dSel.innerHTML = '<option value="">ว</option>'; for(var i=1; i<=31; i++) dSel.innerHTML += `<option value="${i}">${i}</option>`;
+    var mSel = document.getElementById(monthId); var thMonths = ["ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.", "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."]; mSel.innerHTML = '<option value="">ด</option>'; thMonths.forEach((m, idx) => { mSel.innerHTML += `<option value="${idx+1}">${m}</option>`; });
+  }
+
+  function updateDobService() {
+    var d = document.getElementById('opd_d').value; var m = document.getElementById('opd_m').value; var y = document.getElementById('opd_y').value;
+    if(d && m && y && y.length===4) { var yCE = parseInt(y)-543; var iso = yCE + "-" + m.toString().padStart(2,'0') + "-" + d.toString().padStart(2,'0'); document.getElementById('opd_dob').value = iso; calculateAge(iso); } else { document.getElementById('opd_dob').value = ""; document.getElementById('opd_age').value = ""; }
+  }
+
+  function calculateAge(isoDate) {
+    if(!isoDate) return;
+    var parts = isoDate.split('-');
+    var y = parseInt(parts[0]);
+    if(y > 2400) y -= 543;
+    var currentYear = new Date().getFullYear();
+    document.getElementById('opd_age').value = Math.abs(currentYear - y);
+  }
+
+  function fillForm(p, v) {
+    document.getElementById('serviceArea').style.display='block';
+    document.getElementById('original_hn').value = p.hn; document.getElementById('opd_hn').value = p.hn;
+    document.getElementById('opd_cid').value = p.cid; document.getElementById('opd_name').value = p.name;
+    document.getElementById('opd_gender').value = p.gender; document.getElementById('opd_phone').value = p.phone;
+    document.getElementById('opd_address_final').value = p.address || "";
+    document.getElementById('serv_addr_detail').value = ""; document.getElementById('serv_tambon').value = ""; document.getElementById('serv_amphoe').value = ""; document.getElementById('serv_province').value = "";
+    document.getElementById('opd_allergy').value = p.allergy; document.getElementById('opd_underlying').value = p.underlying;
+
+    if(p.dob && p.dob.includes('-')) {
+      var parts = p.dob.split('-');
+      var y = parseInt(parts[0]); var m = parseInt(parts[1]); var d = parseInt(parts[2]);
+      var displayYear = (y < 2400) ? y + 543 : y;
+      document.getElementById('opd_d').value = parseInt(d);
+      document.getElementById('opd_m').value = parseInt(m);
+      document.getElementById('opd_y').value = displayYear;
+      document.getElementById('opd_dob').value = p.dob;
+      calculateAge(p.dob);
+    } else {
+      document.getElementById('opd_d').value = ""; document.getElementById('opd_m').value = ""; document.getElementById('opd_y').value = "";
+      document.getElementById('opd_dob').value = ""; document.getElementById('opd_age').value = "";
+    }
+
+    if(v) {
+      document.getElementById('opd_row_index').value = v.rowIndex; document.getElementById('visit_status').value = v.status;
+      document.getElementById('cc').value = v.cc; document.getElementById('pe').value = v.pe;
+      document.getElementById('bp').value = v.bp; document.getElementById('hr').value = v.hr; document.getElementById('rr').value = v.rr; document.getElementById('bt').value = v.bt;
+      document.getElementById('bw').value = v.bw || ""; document.getElementById('ht').value = v.ht || ""; document.getElementById('bmi').value = v.bmi || "";
+      document.getElementById('lab').value = v.lab; document.getElementById('dx').value = v.dx;
+      document.getElementById('rx').value = v.rx; document.getElementById('doctor').value = v.doctor;
+      document.getElementById('editAlert').style.display='block';
+      document.getElementById('editMsg').innerText = "กำลังแก้ไขข้อมูลเก่า (เลือกกดปุ่มด้านล่าง)";
+    } else { cancelEdit(); }
+  }
+
+  function searchPatient(specificHN) {
+    var txt = specificHN || document.getElementById('searchText').value.trim();
+    if(!txt) return;
+    Swal.showLoading();
+    cancelEdit();
+    callAPI('searchPatientData', { text: txt }).then(res => {
+      Swal.close();
+      if (res.status === 'not_found') {
+        Swal.fire('ไม่พบข้อมูล', '', 'error');
+        document.getElementById('serviceArea').style.display='none';
+      } else if (res.status === 'multiple') {
+        var html = '';
+        res.candidates.forEach(c => {
+          html += `<tr class="candidate-row" onclick="selectCandidate('${c.hn}')"><td><strong>${c.hn}</strong></td><td>${c.name}</td><td>${c.cid}</td><td>${c.phone}</td></tr>`;
+        });
+        document.getElementById('candidateList').innerHTML = html;
+        candidateModal.show();
+      } else if (res.status === 'single') {
+        if (res.info.today_visit) {
+          fillForm(res.info, res.info.today_visit);
+          Swal.fire({ title: 'พบประวัติการตรวจวันนี้', text: 'ระบบดึงข้อมูลมาให้แก้ไขแล้วครับ', icon: 'info', timer: 1500, showConfirmButton: false });
+        } else {
+          fillForm(res.info, null);
+        }
+
+        var hHtml = '';
+        res.history.forEach(r => {
+          hHtml += `<div class="card mb-2 border-secondary">
+            <div class="card-body p-2 d-flex justify-content-between align-items-center">
+              <div><strong>${r.date}</strong><br><span class="badge bg-secondary">Dx:</span> ${r.dx}</div>
+              <div>
+                <button class="btn btn-sm btn-outline-warning me-1" onclick="selectQueue(${r.rowIndex})">✏️ แก้ไข</button>
+                <button class="btn btn-sm btn-outline-dark" onclick="printFromRow(${r.rowIndex})">🖨️</button>
+              </div>
+            </div>
+          </div>`;
+        });
+        document.getElementById('historyList').innerHTML = hHtml||'-';
+      }
+    }).catch(err => { Swal.close(); showApiError(err); });
+  }
+
+  function loadRecentActivity() { callAPI('getRecentActivity').then(function(list) { var tbody = document.getElementById('recentActivityBody'); if(list.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center">ไม่มีข้อมูล</td></tr>'; return; } var html = ''; list.forEach(item => { var badge = item.status === 'Waiting' ? '<span class="badge bg-warning text-dark">รอตรวจ</span>' : '<span class="badge bg-success">ตรวจแล้ว</span>'; html += `<tr><td>${item.time}</td><td>${item.hn}</td><td>${item.name}</td><td>${item.dx || '-'}</td><td>${badge}</td><td><button class="btn btn-sm btn-outline-primary me-1" onclick="selectQueue(${item.rowIndex})">แก้ไข</button><button class="btn btn-sm btn-outline-secondary" onclick="printFromRow(${item.rowIndex})">พิมพ์</button></td></tr>`; }); tbody.innerHTML = html; }).catch(showApiError); }
+  function loadQueue() { callAPI('getWaitingList').then(function(queue) { document.getElementById('queueCount').innerText = queue.length; var html = ''; if(queue.length === 0) { html = '<div class="alert alert-success text-center">ไม่มีคิวรอตรวจ (ว่าง)</div>'; } else { queue.forEach(q => { html += `<div class="card mb-2 queue-card shadow-sm" onclick="selectQueue(${q.rowIndex})"><div class="card-body p-3"><div class="d-flex justify-content-between"><h5 class="mb-1 fw-bold text-primary">${q.name}</h5><span class="badge bg-warning text-dark">รอตรวจ</span></div><div class="small">HN: ${q.hn} | <span class="text-danger">CC: ${q.cc}</span></div><div class="queue-time mt-1"><i class="bi bi-clock"></i> มารอเมื่อ: ${q.wait_time} | BP: ${q.bp}</div></div></div>`; }); } document.getElementById('queueListArea').innerHTML = html; }).catch(showApiError); }
+  function selectQueue(rowIndex) { Swal.showLoading(); callAPI('getVisitByRow', { rowIndex: rowIndex }).then(function(res) { Swal.close(); fillForm(res.patient, res.visit); var tabButton = document.getElementById('tab-service-btn'); var tab = bootstrap.Tab.getOrCreateInstance(tabButton); tab.show(); }).catch(err => { Swal.close(); showApiError(err); }); }
+  function selectCandidate(hn) { candidateModal.hide(); searchPatient(hn); }
+  function printFromRow(rowIndex) { Swal.showLoading(); callAPI('getVisitByRow', { rowIndex: rowIndex }).then(function(res) { Swal.close(); fillForm(res.patient, res.visit); var d = res.visit; var formData = { bp: d.bp, hr: d.hr, rr: d.rr, bt: d.bt, cc: d.cc, pe: d.pe, lab: d.lab, dx: d.dx, rx: d.rx, doctor: d.doctor, bmi: d.bmi }; preparePrint(formData); window.print(); }).catch(err => { Swal.close(); showApiError(err); }); }
+  function saveOPD(mode, status) { document.getElementById('visit_status').value = status; if (mode === 'NEW_CASE') { document.getElementById('opd_row_index').value = ''; } else if (mode === 'UPDATE_CASE') { var currentRow = document.getElementById('opd_row_index').value; if (!currentRow) { Swal.fire('ข้อผิดพลาด', 'คุณยังไม่ได้เลือกรายการที่จะแก้ไข', 'warning'); return; } } var form = document.getElementById('opdForm'); var formData = {}; for(var i=0; i<form.elements.length; i++){ if(form.elements[i].name) formData[form.elements[i].name] = form.elements[i].value; } Swal.fire({title:'กำลังบันทึก...', didOpen:()=>{Swal.showLoading()}}); callAPI('saveOPDVisit', { form: formData }).then(res => { if(status === 'Completed') { Swal.fire({ title: 'บันทึกเรียบร้อย', text: "พิมพ์ใบ OPD เลยไหม?", icon: 'success', showCancelButton: true, confirmButtonText: 'พิมพ์', cancelButtonText: 'ปิด' }).then((result) => { if (result.isConfirmed) { preparePrint(formData); window.print(); } cleanupAfterSave(); }); } else { Swal.fire('ส่งเข้าคิวเรียบร้อย', '', 'success'); cleanupAfterSave(); } }).catch(showApiError); }
+  function cleanupAfterSave() { cancelEdit(); document.getElementById('opdForm').reset(); document.getElementById('serviceArea').style.display='none'; loadQueue(); loadRecentActivity(); loadDashboard(); }
+  function loadRecentPatients() { callAPI('getLastTenPatients').then(function(p){ var t=document.getElementById('recentPatientsBody'); if(p.length===0){t.innerHTML='<tr><td colspan=3 class="text-center">ว่าง</td></tr>';return;} var h=''; p.forEach(x=>{h+=`<tr><td class="text-primary fw-bold">${x.hn}</td><td>${x.name}</td><td>${x.cid}</td></tr>`;}); t.innerHTML=h; }).catch(showApiError); }
+  function autoFillUsage() { var v=document.getElementById('drugInput').value; var d=allDrugs.find(x=>x.name===v); if(d) document.getElementById('drugUsage').value=d.usage; }
+  function addDrugToRx() { var n=document.getElementById('drugInput').value.trim(); var u=document.getElementById('drugUsage').value.trim(); if(n===""){return;} var rx=document.getElementById('rx'); rx.value+=(rx.value.trim()!==""?"\n":"")+`- ${n} : ${u}`; if(!allDrugs.some(x=>x.name===n)){ callAPI('addNewDrug', { name: n, usage: u }).catch(showApiError); allDrugs.push({name:n,usage:u}); var dl=document.getElementById('drugListOptions'); dl.innerHTML+=`<option value="${n}">`; } document.getElementById('drugInput').value=""; document.getElementById('drugUsage').value=""; }
+  function startEdit(data) { document.getElementById('opd_row_index').value=data.rowIndex; document.getElementById('bp').value=data.bp; document.getElementById('hr').value=data.hr||data.pulse; document.getElementById('rr').value=data.rr; document.getElementById('bt').value=data.bt||data.temp; document.getElementById('bw').value=data.bw||""; document.getElementById('ht').value=data.ht||""; document.getElementById('bmi').value=data.bmi||""; document.getElementById('cc').value=data.cc; document.getElementById('pe').value=data.pe; document.getElementById('lab').value=data.lab; document.getElementById('dx').value=data.dx; document.getElementById('rx').value=data.rx; document.getElementById('doctor').value=data.doctor; document.getElementById('serviceArea').scrollIntoView({behavior:'smooth'}); document.getElementById('editAlert').style.display='block'; }
+  function cancelEdit() { document.getElementById('editAlert').style.display='none'; document.getElementById('opd_row_index').value=''; document.getElementById('cc').value=''; document.getElementById('bp').value=''; document.getElementById('hr').value=''; document.getElementById('rr').value=''; document.getElementById('bt').value=''; document.getElementById('bw').value=''; document.getElementById('ht').value=''; document.getElementById('bmi').value=''; document.getElementById('pe').value=''; document.getElementById('lab').value=''; document.getElementById('dx').value=''; document.getElementById('rx').value=''; document.getElementById('doctor').value=''; document.getElementById('opd_d').value=''; document.getElementById('opd_m').value=''; document.getElementById('opd_y').value=''; document.getElementById('opd_dob').value=''; document.getElementById('opd_age').value=''; document.getElementById('opd_address_final').value=''; document.getElementById('serv_addr_detail').value=''; document.getElementById('serv_tambon').value=''; document.getElementById('serv_amphoe').value=''; document.getElementById('serv_province').value=''; }
+  function preparePrint(d){ var now=new Date(); document.getElementById('p_date').innerText=now.toLocaleDateString('th-TH'); document.getElementById('p_hn').innerText=document.getElementById('opd_hn').value; document.getElementById('p_name').innerText=document.getElementById('opd_name').value; document.getElementById('p_age').innerText=document.getElementById('opd_age').value; document.getElementById('p_gender').innerText=document.getElementById('opd_gender').value; document.getElementById('p_cid').innerText=document.getElementById('opd_cid').value; document.getElementById('p_address').innerText=document.getElementById('opd_address_final').value; document.getElementById('p_allergy').innerText=document.getElementById('opd_allergy').value; document.getElementById('p_underlying').innerText=document.getElementById('opd_underlying').value; document.getElementById('p_bp').innerText=d.bp||'-'; document.getElementById('p_hr').innerText=d.hr||'-'; document.getElementById('p_rr').innerText=d.rr||'-'; document.getElementById('p_bt').innerText=d.bt||'-'; document.getElementById('p_bmi').innerText=d.bmi||'-'; document.getElementById('p_cc').innerText=d.cc||'-'; document.getElementById('p_pe').innerText=d.pe||'-'; document.getElementById('p_lab').innerText=d.lab||'-'; document.getElementById('p_dx').innerText=d.dx||'-'; document.getElementById('p_rx').innerText=d.rx||'-'; document.getElementById('p_doctor').innerText=d.doctor||'................'; }
+  function printOld(d){ preparePrint(d); window.print(); }
+  function submitRegister(e){ e.preventDefault(); Swal.showLoading(); var formObj = { hn: document.querySelector('input[name="hn"]').value, cid: document.querySelector('input[name="cid"]').value, dob: "", name: document.querySelector('input[name="name"]').value, gender: document.querySelector('select[name="gender"]').value, phone: document.querySelector('input[name="phone"]').value, address: "", allergy: document.querySelector('input[name="allergy"]').value, underlying: document.querySelector('input[name="underlying"]').value }; callAPI('registerPatient', { form: formObj }).then(res=>{ Swal.fire(res.includes('Error')?'Error':'Success',res,res.includes('Error')?'error':'success'); if(!res.includes('Error')){ document.getElementById('regForm').reset(); loadRecentPatients(); } }).catch(showApiError); }
+</script>
+</body>
+</html>
