@@ -451,21 +451,51 @@ function getDashboardStats() {
 }
 
 function getWaitingList() {
-  var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = getOrCreateOPDSheet();
   var data = sheet.getDataRange().getValues();
   var queue = [];
+  var now = new Date();
   for (var i = 1; i < data.length; i++) {
     if (data[i][23] == "Waiting") {
       var d = new Date(data[i][0]);
       var timeStr = Utilities.formatDate(d, "GMT+7", "HH:mm");
+      var waitMinutes = Math.max(0, Math.round((now.getTime() - d.getTime()) / 60000));
       queue.push({
         rowIndex: i + 1, hn: data[i][1], name: data[i][2], cc: data[i][8], bp: data[i][12],
-        wait_time: timeStr
+        wait_time: timeStr, waitMinutes: waitMinutes, _sortTime: d.getTime()
       });
     }
   }
+  // เรียงตามเวลาเข้าคิวก่อน-หลัง แล้วให้เลขคิวตามลำดับนั้น (มาก่อนได้คิวน้อยกว่า)
+  queue.sort(function (a, b) { return a._sortTime - b._sortTime; });
+  queue.forEach(function (q, idx) { q.queueNumber = idx + 1; delete q._sortTime; });
   return queue;
+}
+
+function getVisitsByMonth(year, month) {
+  var y = parseInt(year, 10);
+  var m = parseInt(month, 10); // 1-12
+  var sheet = getOrCreateOPDSheet();
+  var data = sheet.getDataRange().getValues();
+  var list = [];
+  for (var i = 1; i < data.length; i++) {
+    var d = new Date(data[i][0]);
+    if (isNaN(d.getTime())) continue;
+    if (d.getFullYear() === y && (d.getMonth() + 1) === m) {
+      list.push({
+        date: Utilities.formatDate(d, "GMT+7", "dd/MM/yyyy HH:mm"),
+        hn: String(data[i][1]).replace(/'/g, ""),
+        name: data[i][2],
+        cid: String(data[i][7]).replace(/'/g, ""),
+        phone: String(data[i][5]).replace(/'/g, ""),
+        cc: data[i][8],
+        dx: data[i][20],
+        doctor: data[i][22],
+        status: data[i][23]
+      });
+    }
+  }
+  return list;
 }
 
 function getRecentActivity() {
@@ -803,6 +833,7 @@ function handleApi(action, p) {
       case 'getDashboardStats':      data = getDashboardStats(); break;
       case 'getWaitingList':         data = getWaitingList(); break;
       case 'getRecentActivity':      data = getRecentActivity(); break;
+      case 'getVisitsByMonth':       data = getVisitsByMonth(p.year, p.month); break;
       case 'getVisitByRow':          data = getVisitByRow(p.rowIndex); break;
       case 'registerPatient':        data = registerPatient(p.form); break;
       case 'updateProfileOnly':      data = updateProfileOnly(p.form); break;

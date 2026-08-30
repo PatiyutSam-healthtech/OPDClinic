@@ -64,6 +64,11 @@
     .queue-card { cursor: pointer; transition: transform 0.2s; border-left: 5px solid #ffc107; }
     .queue-card:hover { transform: scale(1.02); background-color: #fff9db; }
     .queue-time { font-size: 0.8rem; color: gray; }
+    .queue-number-badge {
+      background: var(--blue-600); color: #fff; font-weight: bold; font-size: .8rem;
+      border-radius: 10px; padding: 6px 10px; text-align: center; line-height: 1.15; min-width: 56px; flex-shrink: 0;
+    }
+    .queue-number-badge .num { font-size: 1.3rem; display: block; }
     .tt-menu { background-color: #fff; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 5px 10px rgba(0,0,0,.2); margin-top: 5px; padding: 5px 0; max-height: 200px; overflow-y: auto; width: 100%; z-index: 1050; }
     .tt-suggestion { padding: 3px 10px; cursor: pointer; font-size: 14px; }
     .tt-suggestion:hover { background-color: var(--blue-600); color: #fff; }
@@ -156,6 +161,7 @@
       <li class="nav-item" id="tab-users-item" style="display:none;"><button class="nav-link" id="tab-users-btn" data-bs-toggle="pill" data-bs-target="#pills-users" onclick="loadUsers()"><i class="bi bi-people-fill me-2"></i>จัดการผู้ใช้</button></li>
     </ul>
     <div class="logout-area">
+      <button class="btn btn-outline-light btn-sm w-100 mb-2" onclick="helpModal.show()"><i class="bi bi-question-circle me-1"></i> วิธีใช้งาน</button>
       <button class="btn btn-outline-light btn-sm w-100" onclick="handleLogout()"><i class="bi bi-box-arrow-right me-1"></i> ออกจากระบบ</button>
       <div class="text-center small text-white-50 mt-3">Developed by Patiyut Aupapong</div>
     </div>
@@ -269,9 +275,29 @@
           <div class="col-md-4"><div class="card stat-card bg-gradient-info p-3"><div class="d-flex justify-content-between align-items-center"><div><h6 class="mb-0">คนไข้เดือนนี้</h6><h2 class="mb-0 fw-bold" id="stat-month">0</h2></div><i class="bi bi-calendar-check-fill icon-large"></i></div></div></div>
           <div class="col-md-4"><div class="card stat-card bg-gradient-primary p-3"><div class="d-flex justify-content-between align-items-center"><div><h6 class="mb-0">คนไข้สะสม</h6><h2 class="mb-0 fw-bold" id="stat-total">0</h2></div><i class="bi bi-person-vcard-fill icon-large"></i></div></div></div>
         </div>
-        <div class="row g-3">
+        <div class="row g-3 mb-4">
           <div class="col-md-8"><div class="card shadow-sm h-100"><div class="card-header bg-white fw-bold">📉 แนวโน้มคนไข้ (7 วันล่าสุด)</div><div class="card-body"><canvas id="dailyChart"></canvas></div></div></div>
           <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-header bg-white fw-bold">🏆 5 โรคที่พบบ่อย</div><div class="card-body"><ul class="list-group list-group-flush" id="topDxList"><li class="list-group-item text-center text-muted">กำลังโหลด...</li></ul></div></div></div>
+        </div>
+
+        <div class="card shadow-sm">
+          <div class="card-header bg-white fw-bold"><i class="bi bi-download"></i> ส่งออกรายชื่อคนไข้รายเดือน (CSV)</div>
+          <div class="card-body">
+            <div class="row g-2 align-items-end">
+              <div class="col-auto">
+                <label class="form-label small mb-1">เดือน</label>
+                <select class="form-select form-select-sm" id="exportMonth"></select>
+              </div>
+              <div class="col-auto">
+                <label class="form-label small mb-1">ปี (ค.ศ.)</label>
+                <select class="form-select form-select-sm" id="exportYear"></select>
+              </div>
+              <div class="col-auto">
+                <button class="btn btn-sm btn-primary" onclick="exportMonthlyCSV()"><i class="bi bi-file-earmark-spreadsheet"></i> ส่งออกเป็น CSV</button>
+              </div>
+            </div>
+            <div class="form-text mt-2">ไฟล์ CSV เปิดด้วย Excel/Google Sheets ได้ทันที มีข้อมูลวันที่ตรวจ, HN, ชื่อ, เลขบัตร, เบอร์โทร, อาการ, วินิจฉัย, ผู้ตรวจ และสถานะของทุกเคสในเดือนที่เลือก</div>
+          </div>
         </div>
         </div>
       </div>
@@ -340,6 +366,130 @@
         </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="helpModal" tabindex="-1">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header bg-primary text-white">
+        <h5 class="modal-title"><i class="bi bi-question-circle"></i> วิธีใช้งานระบบ</h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+      </div>
+      <div class="modal-body">
+        <div class="accordion" id="helpAccordion">
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#help-queue">
+                <i class="bi bi-hourglass-split me-2 text-warning"></i> คิวรอตรวจ คืออะไร / ดูยังไงว่าใครคิวไหน รอมากี่นาที
+              </button>
+            </h2>
+            <div id="help-queue" class="accordion-collapse collapse show" data-bs-parent="#helpAccordion">
+              <div class="accordion-body">
+                <p>เมื่อกดปุ่ม <strong>"ส่งเข้าคิว (สร้างรายการใหม่)"</strong> ในหน้าตรวจรักษา คนไข้จะถูกเพิ่มเข้าไปในแท็บ
+                <strong>"คิวรอตรวจ"</strong> ทันที ยังไม่ถือว่าตรวจเสร็จ</p>
+                <p>ในแท็บคิวรอตรวจ การ์ดของคนไข้แต่ละคนจะมี 2 ตัวเลขสำคัญ:</p>
+                <ul>
+                  <li><strong>เลข "คิวที่ X"</strong> (กล่องสีน้ำเงินด้านซ้าย) — ลำดับที่ควรเรียกตรวจ นับจากคนที่เข้าคิว
+                  <u>ก่อน</u>ไปหาคนที่เข้าคิวหลังสุด (คิวที่ 1 คือคนที่ควรได้ตรวจก่อน)</li>
+                  <li><strong>ป้าย "รอมาแล้ว X นาที"</strong> (มุมขวาบน) — นับเวลาตั้งแต่กด "ส่งเข้าคิว" จนถึงตอนนี้
+                  แบบเรียลไทม์ (อัปเดตอัตโนมัติทุก 1 นาทีถ้าเปิดหน้านี้ค้างไว้) สีของป้ายจะเตือนความนาน:
+                  🟢 เขียว = รอไม่นาน (ต่ำกว่า 15 นาที), 🟡 เหลือง = เริ่มรอนาน (15–29 นาที), 🔴 แดง = รอนานมาก (30 นาทีขึ้นไป)</li>
+                </ul>
+                <p>กดที่การ์ดคนไข้คนไหนก็ได้ เพื่อเปิดข้อมูลของคนไข้คนนั้นขึ้นมาตรวจต่อในแท็บ "ตรวจรักษา" ทันที</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#help-service">
+                <i class="bi bi-clipboard2-pulse me-2 text-primary"></i> 1. ตรวจรักษา
+              </button>
+            </h2>
+            <div id="help-service" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+              <div class="accordion-body">
+                <ol>
+                  <li>พิมพ์ HN, เลขบัตรประชาชน หรือชื่อคนไข้ในช่องค้นหา แล้วกด "ค้นหา"</li>
+                  <li>ถ้าเจอคนไข้พอดี 1 คน ระบบจะดึงข้อมูลมาเติมในฟอร์มให้อัตโนมัติ (ถ้ามีประวัติตรวจของวันนี้อยู่แล้วจะดึงมาให้แก้ต่อด้วย)</li>
+                  <li>กรอกอาการ/ผลตรวจ/วินิจฉัย/ยา ให้ครบ</li>
+                  <li>เลือกปุ่มบันทึกให้ตรงกับสถานการณ์:
+                    <ul>
+                      <li><strong>ส่งเข้าคิว</strong> — บันทึกแล้วให้คนไข้ไปรอที่แท็บ "คิวรอตรวจ" (ยังไม่จบเคส)</li>
+                      <li><strong>จบเคส (สร้างใหม่)</strong> — บันทึกและปิดเคสในครั้งเดียว (ไม่ผ่านคิว)</li>
+                      <li><strong>จบเคส (แก้ไขใบเดิม)</strong> — ใช้ตอนดึงคนไข้จากคิวหรือประวัติเดิมมาตรวจต่อแล้วจบเคส</li>
+                    </ul>
+                  </li>
+                </ol>
+                <p>ปุ่ม "บันทึกแก้ไขประวัติ" (สีฟ้าอ่อน) ใช้แก้ข้อมูลส่วนตัว/แพ้ยา/โรคประจำตัว โดยไม่สร้างประวัติการตรวจใหม่</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#help-recent">
+                <i class="bi bi-clock-history me-2 text-primary"></i> 2. ประวัติล่าสุด (50)
+              </button>
+            </h2>
+            <div id="help-recent" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+              <div class="accordion-body">แสดง 50 เคสที่บันทึกล่าสุด กดปุ่ม "แก้ไข" เพื่อเปิดแก้ไขข้อมูล หรือ "พิมพ์" เพื่อพิมพ์ใบ OPD ของเคสนั้น</div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#help-register">
+                <i class="bi bi-person-plus me-2 text-primary"></i> 3. ลงทะเบียนใหม่
+              </button>
+            </h2>
+            <div id="help-register" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+              <div class="accordion-body">ใช้ลงทะเบียนคนไข้ใหม่ที่ยังไม่เคยมาคลินิก กรอก HN เอง (ตั้งเลขไม่ให้ซ้ำของเดิม), เลขบัตร, ชื่อ-สกุล ให้ครบ ระบบจะเตือนถ้า HN ซ้ำ</div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#help-dashboard">
+                <i class="bi bi-bar-chart-fill me-2 text-primary"></i> 4. สรุปภาพรวม / ส่งออกรายชื่อรายเดือน
+              </button>
+            </h2>
+            <div id="help-dashboard" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+              <div class="accordion-body">
+                <p>แสดงจำนวนคนไข้วันนี้/เดือนนี้/สะสม, กราฟแนวโน้ม 7 วันล่าสุด และ 5 โรคที่พบบ่อย</p>
+                <p>ด้านล่างมีช่อง <strong>"ส่งออกรายชื่อคนไข้รายเดือน (CSV)"</strong> — เลือกเดือน/ปีที่ต้องการ แล้วกด
+                "ส่งออกเป็น CSV" ระบบจะดาวน์โหลดไฟล์รายชื่อคนไข้ที่มาตรวจในเดือนนั้นให้ทันที เปิดดูได้ด้วย Excel หรือ Google Sheets</p>
+              </div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#help-database">
+                <i class="bi bi-database-fill me-2 text-primary"></i> 5. ฐานข้อมูลคนไข้
+              </button>
+            </h2>
+            <div id="help-database" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+              <div class="accordion-body">แสดงรายชื่อคนไข้ทั้งหมดในระบบ ค้นหาได้จากชื่อ/HN/เบอร์โทร กดปุ่ม "ดูประวัติ" เพื่อดูประวัติการตรวจทั้งหมดของคนไข้คนนั้น</div>
+            </div>
+          </div>
+
+          <div class="accordion-item">
+            <h2 class="accordion-header">
+              <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse" data-bs-target="#help-users">
+                <i class="bi bi-people-fill me-2 text-primary"></i> 6. จัดการผู้ใช้ (เฉพาะผู้ดูแลระบบ)
+              </button>
+            </h2>
+            <div id="help-users" class="accordion-collapse collapse" data-bs-parent="#helpAccordion">
+              <div class="accordion-body">เห็นเฉพาะบัญชีที่เป็น admin — เพิ่ม/แก้ไข/ปิดใช้งานผู้ใช้ และรีเซ็ตรหัสผ่านให้เจ้าหน้าที่คนอื่นได้จากหน้านี้โดยตรง</div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button></div>
     </div>
   </div>
 </div>
@@ -559,7 +709,7 @@
 
   var allDrugs = [];
   var icd10DB = [];
-  var candidateModal, historyModal, createUserModal, editUserModal;
+  var candidateModal, historyModal, createUserModal, editUserModal, helpModal;
   var myChart = null;
   var allPatientsCache = [];
   var usersCache = [];
@@ -569,6 +719,12 @@
     historyModal = new bootstrap.Modal(document.getElementById('historyModal'));
     createUserModal = new bootstrap.Modal(document.getElementById('createUserModal'));
     editUserModal = new bootstrap.Modal(document.getElementById('editUserModal'));
+    helpModal = new bootstrap.Modal(document.getElementById('helpModal'));
+    initExportSelectors();
+    setInterval(function () {
+      var queuePane = document.getElementById('pills-queue');
+      if (sessionToken && queuePane && queuePane.classList.contains('active')) { loadQueue(); }
+    }, 60000);
     initThaiDateOptions('opd_d', 'opd_m');
     $.Thailand({ $district: $('#serv_tambon'), $amphoe: $('#serv_amphoe'), $province: $('#serv_province'), onDataFill: function(data){ setTimeout(combineServiceAddr, 100); } });
 
@@ -848,7 +1004,36 @@
   }
 
   function loadRecentActivity() { callAPI('getRecentActivity').then(function(list) { var tbody = document.getElementById('recentActivityBody'); if(list.length === 0) { tbody.innerHTML = '<tr><td colspan="6" class="text-center">ไม่มีข้อมูล</td></tr>'; return; } var html = ''; list.forEach(item => { var badge = item.status === 'Waiting' ? '<span class="badge bg-warning text-dark">รอตรวจ</span>' : '<span class="badge bg-success">ตรวจแล้ว</span>'; html += `<tr><td>${item.time}</td><td>${item.hn}</td><td>${item.name}</td><td>${item.dx || '-'}</td><td>${badge}</td><td><button class="btn btn-sm btn-outline-primary me-1" onclick="selectQueue(${item.rowIndex})">แก้ไข</button><button class="btn btn-sm btn-outline-secondary" onclick="printFromRow(${item.rowIndex})">พิมพ์</button></td></tr>`; }); tbody.innerHTML = html; }).catch(showApiError); }
-  function loadQueue() { callAPI('getWaitingList').then(function(queue) { document.getElementById('queueCount').innerText = queue.length; var html = ''; if(queue.length === 0) { html = '<div class="alert alert-success text-center">ไม่มีคิวรอตรวจ (ว่าง)</div>'; } else { queue.forEach(q => { html += `<div class="card mb-2 queue-card shadow-sm" onclick="selectQueue(${q.rowIndex})"><div class="card-body p-3"><div class="d-flex justify-content-between"><h5 class="mb-1 fw-bold text-primary">${q.name}</h5><span class="badge bg-warning text-dark">รอตรวจ</span></div><div class="small">HN: ${q.hn} | <span class="text-danger">CC: ${q.cc}</span></div><div class="queue-time mt-1"><i class="bi bi-clock"></i> มารอเมื่อ: ${q.wait_time} | BP: ${q.bp}</div></div></div>`; }); } document.getElementById('queueListArea').innerHTML = html; }).catch(showApiError); }
+  function loadQueue() {
+    callAPI('getWaitingList').then(function(queue) {
+      document.getElementById('queueCount').innerText = queue.length;
+      var html = '';
+      if (queue.length === 0) {
+        html = '<div class="alert alert-success text-center">ไม่มีคิวรอตรวจ (ว่าง)</div>';
+      } else {
+        queue.forEach(q => {
+          var waitClass = q.waitMinutes >= 30 ? 'bg-danger' : (q.waitMinutes >= 15 ? 'bg-warning text-dark' : 'bg-success');
+          html += `<div class="card mb-2 queue-card shadow-sm" onclick="selectQueue(${q.rowIndex})">
+            <div class="card-body p-3">
+              <div class="d-flex justify-content-between align-items-center">
+                <div class="d-flex align-items-center">
+                  <div class="queue-number-badge me-3">คิวที่<span class="num">${q.queueNumber}</span></div>
+                  <div>
+                    <h5 class="mb-0 fw-bold text-primary">${q.name}</h5>
+                    <div class="small text-muted">HN: ${q.hn}</div>
+                  </div>
+                </div>
+                <span class="badge ${waitClass}">รอมาแล้ว ${q.waitMinutes} นาที</span>
+              </div>
+              <div class="small mt-2 text-danger">CC: ${q.cc}</div>
+              <div class="queue-time mt-1"><i class="bi bi-clock"></i> เข้าคิวเมื่อ: ${q.wait_time} | BP: ${q.bp}</div>
+            </div>
+          </div>`;
+        });
+      }
+      document.getElementById('queueListArea').innerHTML = html;
+    }).catch(showApiError);
+  }
   function selectQueue(rowIndex) { Swal.showLoading(); callAPI('getVisitByRow', { rowIndex: rowIndex }).then(function(res) { Swal.close(); fillForm(res.patient, res.visit); var tabButton = document.getElementById('tab-service-btn'); var tab = bootstrap.Tab.getOrCreateInstance(tabButton); tab.show(); }).catch(err => { Swal.close(); showApiError(err); }); }
   function selectCandidate(hn) { candidateModal.hide(); searchPatient(hn); }
   function printFromRow(rowIndex) { Swal.showLoading(); callAPI('getVisitByRow', { rowIndex: rowIndex }).then(function(res) { Swal.close(); fillForm(res.patient, res.visit); var d = res.visit; var formData = { bp: d.bp, hr: d.hr, rr: d.rr, bt: d.bt, cc: d.cc, pe: d.pe, lab: d.lab, dx: d.dx, rx: d.rx, doctor: d.doctor, bmi: d.bmi }; preparePrint(formData); window.print(); }).catch(err => { Swal.close(); showApiError(err); }); }
@@ -948,6 +1133,62 @@
         .then(function(msg) { Swal.fire('สำเร็จ', msg, 'success'); })
         .catch(showApiError);
     });
+  }
+
+  // ==== ส่งออกรายชื่อคนไข้รายเดือน (CSV) ====================================
+  function initExportSelectors() {
+    var mSel = document.getElementById('exportMonth');
+    var thMonths = ["มกราคม","กุมภาพันธ์","มีนาคม","เมษายน","พฤษภาคม","มิถุนายน","กรกฎาคม","สิงหาคม","กันยายน","ตุลาคม","พฤศจิกายน","ธันวาคม"];
+    var mHtml = '';
+    thMonths.forEach(function(name, idx) { mHtml += `<option value="${idx+1}">${name}</option>`; });
+    mSel.innerHTML = mHtml;
+
+    var ySel = document.getElementById('exportYear');
+    var currentYear = new Date().getFullYear();
+    var yHtml = '';
+    for (var y = currentYear; y >= currentYear - 4; y--) { yHtml += `<option value="${y}">${y}</option>`; }
+    ySel.innerHTML = yHtml;
+
+    mSel.value = new Date().getMonth() + 1;
+    ySel.value = currentYear;
+  }
+
+  function exportMonthlyCSV() {
+    var year = document.getElementById('exportYear').value;
+    var month = document.getElementById('exportMonth').value;
+    Swal.fire({ title: 'กำลังสร้างไฟล์...', didOpen: () => { Swal.showLoading(); } });
+    callAPI('getVisitsByMonth', { year: year, month: month }).then(function(list) {
+      Swal.close();
+      if (list.length === 0) { Swal.fire('ไม่พบข้อมูล', 'ไม่มีรายการตรวจในเดือนที่เลือก', 'info'); return; }
+      var monthLabel = document.getElementById('exportMonth').selectedOptions[0].text;
+      downloadCSV(list, 'คนไข้_' + monthLabel + '_' + year + '.csv');
+    }).catch(function(err) { Swal.close(); showApiError(err); });
+  }
+
+  function csvEscape(v) {
+    v = (v === null || v === undefined) ? '' : String(v);
+    if (v.indexOf(',') !== -1 || v.indexOf('"') !== -1 || v.indexOf('\n') !== -1) {
+      v = '"' + v.replace(/"/g, '""') + '"';
+    }
+    return v;
+  }
+
+  function downloadCSV(rows, filename) {
+    var headers = ['วันที่ตรวจ', 'HN', 'ชื่อ-สกุล', 'เลขบัตร', 'เบอร์โทร', 'อาการ (CC)', 'วินิจฉัย (Dx)', 'ผู้ตรวจ', 'สถานะ'];
+    var lines = [headers.map(csvEscape).join(',')];
+    rows.forEach(function(r) {
+      lines.push([r.date, r.hn, r.name, r.cid, r.phone, r.cc, r.dx, r.doctor, r.status].map(csvEscape).join(','));
+    });
+    var csvContent = '\uFEFF' + lines.join('\r\n'); // BOM กัน Excel อ่านภาษาไทยเพี้ยน
+    var blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   }
 </script>
 </body>
