@@ -9,37 +9,94 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 
   <style>
-    body { background-color: #f4f7f6; font-family: 'Sarabun', sans-serif; position: relative; }
-    .dev-credit { position: absolute; top: 5px; right: 15px; font-size: 0.8rem; color: #6c757d; font-weight: 500; z-index: 1000; pointer-events: none; }
-    .container { max-width: 1000px; margin-top: 25px; background: white; padding: 30px; border-radius: 10px; box-shadow: 0 0 15px rgba(0,0,0,0.1); }
-    .section-title { border-bottom: 2px solid #007bff; padding-bottom: 5px; margin-bottom: 15px; color: #007bff; font-weight: bold; }
+    :root {
+      --navy-900: #0a2540;
+      --navy-800: #123a63;
+      --blue-700: #1257a8;
+      --blue-600: #1565c0;
+      --blue-500: #1e88e5;
+      --blue-100: #e3f2fd;
+      --bg: #eef3f9;
+    }
+
+    body { background-color: var(--bg); font-family: 'Sarabun', sans-serif; margin: 0; }
+
+    /* ---- Login screen ---- */
+    #loginScreen {
+      min-height: 100vh; display: flex; align-items: center; justify-content: center;
+      background: linear-gradient(135deg, var(--navy-900), var(--blue-600));
+      padding: 20px;
+    }
+    .login-card {
+      background: #fff; border-radius: 16px; padding: 40px 36px; width: 100%; max-width: 380px;
+      box-shadow: 0 25px 60px rgba(0,0,0,.35);
+    }
+
+    /* ---- App shell / sidebar layout ---- */
+    .app-shell { display: flex; min-height: 100vh; }
+    .sidebar {
+      width: 250px; flex-shrink: 0; display: flex; flex-direction: column;
+      background: linear-gradient(180deg, var(--navy-900), var(--navy-800));
+      color: #fff; padding: 22px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+    }
+    .sidebar .brand { padding: 0 22px 18px; border-bottom: 1px solid rgba(255,255,255,.12); margin-bottom: 12px; }
+    .sidebar .brand-title { font-weight: 700; font-size: 1.1rem; }
+    .sidebar .brand-user { font-size: .8rem; color: rgba(255,255,255,.65); margin-top: 4px; }
+    .sidebar .nav-link {
+      color: rgba(255,255,255,.78); border-radius: 8px; margin: 3px 12px; padding: 10px 14px;
+      display: flex; align-items: center; text-align: left; font-size: .95rem;
+    }
+    .sidebar .nav-link.active { background: var(--blue-600); color: #fff; }
+    .sidebar .nav-link:hover:not(.active) { background: rgba(255,255,255,.08); color: #fff; }
+    .sidebar .logout-area { margin-top: auto; padding: 16px 20px 0; }
+    .main-content { flex: 1; min-width: 0; padding: 26px 30px; }
+
+    .page-card {
+      background: #fff; padding: 26px 28px; border-radius: 14px;
+      box-shadow: 0 4px 20px rgba(10,37,64,.06); margin-bottom: 20px;
+    }
+    .section-title { border-bottom: 2px solid var(--blue-600); padding-bottom: 5px; margin-bottom: 15px; color: var(--blue-700); font-weight: bold; }
     .hn-table { font-size: 0.9rem; }
-    .hn-table thead { background-color: #e9ecef; }
+    .hn-table thead { background-color: var(--blue-100); }
     .edit-mode-alert { display: none; margin-bottom: 15px; }
     .candidate-row { cursor: pointer; }
-    .candidate-row:hover { background-color: #e2e6ea; }
+    .candidate-row:hover { background-color: var(--blue-100); }
     .queue-card { cursor: pointer; transition: transform 0.2s; border-left: 5px solid #ffc107; }
     .queue-card:hover { transform: scale(1.02); background-color: #fff9db; }
     .queue-time { font-size: 0.8rem; color: gray; }
     .tt-menu { background-color: #fff; border: 1px solid #ccc; border-radius: 4px; box-shadow: 0 5px 10px rgba(0,0,0,.2); margin-top: 5px; padding: 5px 0; max-height: 200px; overflow-y: auto; width: 100%; z-index: 1050; }
     .tt-suggestion { padding: 3px 10px; cursor: pointer; font-size: 14px; }
-    .tt-suggestion:hover { background-color: #007bff; color: #fff; }
+    .tt-suggestion:hover { background-color: var(--blue-600); color: #fff; }
     .icd-suggestion { position: absolute; background: white; border: 1px solid #ccc; width: 100%; max-height: 150px; overflow-y: auto; z-index: 1000; display: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); border-radius: 0 0 5px 5px; }
     .icd-item { padding: 8px 12px; cursor: pointer; border-bottom: 1px solid #eee; font-size: 0.9rem; }
-    .icd-item:hover { background-color: #e9ecef; color: #0d6efd; }
+    .icd-item:hover { background-color: var(--blue-100); color: var(--blue-700); }
     .icd-code-badge { font-weight: bold; color: #dc3545; margin-right: 5px; }
     .stat-card { border-radius: 10px; border: none; color: white; transition: transform 0.2s; }
     .stat-card:hover { transform: translateY(-5px); }
-    .bg-gradient-primary { background: linear-gradient(45deg, #4e73df, #224abe); }
+    .bg-gradient-primary { background: linear-gradient(45deg, var(--blue-600), var(--navy-900)); }
     .bg-gradient-success { background: linear-gradient(45deg, #1cc88a, #13855c); }
-    .bg-gradient-info { background: linear-gradient(45deg, #36b9cc, #258391); }
+    .bg-gradient-info { background: linear-gradient(45deg, var(--blue-500), var(--blue-700)); }
     .icon-large { font-size: 2.5rem; opacity: 0.5; }
+
+    .btn-primary { background-color: var(--blue-600); border-color: var(--blue-600); }
+    .btn-primary:hover, .btn-primary:focus { background-color: var(--navy-800); border-color: var(--navy-800); }
+    .text-primary { color: var(--blue-600) !important; }
+    .nav-pills .nav-link.active { background-color: var(--blue-600); }
+
+    @media (max-width: 900px) {
+      .app-shell { flex-direction: column; }
+      .sidebar { width: 100%; height: auto; position: relative; flex-direction: row; flex-wrap: wrap; padding: 12px; }
+      .sidebar .brand { border-bottom: none; padding: 0 10px; margin-bottom: 0; width: 100%; }
+      .sidebar .nav-link { margin: 3px 6px; }
+      .sidebar .logout-area { margin-top: 8px; padding: 0 10px; width: 100%; }
+      .main-content { padding: 16px; }
+    }
 
     @media print {
       body * { visibility: hidden; }
       #printArea, #printArea * { visibility: visible; }
       #printArea { position: absolute; left: 0; top: 0; width: 100%; padding: 10px 15px; background-color: white; color: #000; }
-      .no-print, .dev-credit { display: none !important; }
+      .no-print { display: none !important; }
       .clinic-header { text-align: center; border-bottom: 1px solid #000; margin-bottom: 5px; padding-bottom: 2px; }
       .clinic-name { font-size: 18px; font-weight: bold; margin-bottom: 0; line-height: 1.2; }
       .clinic-info { font-size: 11px; line-height: 1.2; }
@@ -59,171 +116,211 @@
 </head>
 <body>
 
-<div class="dev-credit">Developed by Patiyut Aupapong</div>
-
-<div class="container no-print">
-  <h3 class="text-center mb-4"><i class="bi bi-hospital-fill text-danger"></i> ระบบคลินิกครบวงจร</h3>
-
-  <ul class="nav nav-pills mb-3 justify-content-center" id="mainTab">
-    <li class="nav-item"><button class="nav-link active" id="tab-service-btn" data-bs-toggle="pill" data-bs-target="#pills-service">1. ตรวจรักษา</button></li>
-    <li class="nav-item"><button class="nav-link" id="tab-queue-btn" data-bs-toggle="pill" data-bs-target="#pills-queue" onclick="loadQueue()">2. คิวรอตรวจ <span id="queueCount" class="badge bg-danger">0</span></button></li>
-    <li class="nav-item"><button class="nav-link" id="tab-recent-btn" data-bs-toggle="pill" data-bs-target="#pills-recent" onclick="loadRecentActivity()">3. ประวัติล่าสุด (50)</button></li>
-    <li class="nav-item"><button class="nav-link" id="tab-register-btn" data-bs-toggle="pill" data-bs-target="#pills-register" onclick="loadRecentPatients()">4. ลงทะเบียนใหม่</button></li>
-    <li class="nav-item"><button class="nav-link" id="tab-dashboard-btn" data-bs-toggle="pill" data-bs-target="#pills-dashboard" onclick="loadDashboard()">5. สรุปภาพรวม</button></li>
-    <li class="nav-item"><button class="nav-link" id="tab-database-btn" data-bs-toggle="pill" data-bs-target="#pills-database" onclick="loadAllPatients()">6. ฐานข้อมูลคนไข้</button></li>
-  </ul>
-
-  <div class="tab-content">
-
-    <div class="tab-pane fade show active" id="pills-service">
-      <div class="input-group mb-3">
-        <input type="text" id="searchText" class="form-control" placeholder="พิมพ์ HN, เลขบัตร หรือ ชื่อ...">
-        <button class="btn btn-primary" onclick="searchPatient()">ค้นหา</button>
-      </div>
-
-      <div id="serviceArea" style="display:none;">
-        <div class="alert alert-warning edit-mode-alert" id="editAlert">
-          <strong id="editMsg"><i class="bi bi-pencil-square"></i> กำลังแก้ไขประวัติเก่า</strong>
-          <button class="btn btn-sm btn-outline-dark ms-3" onclick="cancelEdit()">ล้างค่า (เริ่มใหม่)</button>
-        </div>
-
-        <form id="opdForm" onsubmit="return false;">
-          <input type="hidden" name="opd_row_index" id="opd_row_index">
-          <input type="hidden" name="original_hn" id="original_hn">
-          <input type="hidden" name="visit_status" id="visit_status">
-          <input type="hidden" name="opd_dob" id="opd_dob">
-
-          <div class="section-title">ข้อมูลผู้ป่วย</div>
-          <div class="row g-2 mb-3">
-            <div class="col-md-2"><label class="text-primary fw-bold">HN</label><input type="text" class="form-control" name="opd_hn" id="opd_hn"></div>
-            <div class="col-md-3"><label class="text-primary fw-bold">CID</label><input type="text" class="form-control" name="opd_cid" id="opd_cid" maxlength="17" oninput="autoFormatCID(this)"></div>
-            <div class="col-md-3"><label class="text-primary fw-bold">ชื่อ-สกุล</label><input type="text" class="form-control" name="opd_name" id="opd_name"></div>
-            <div class="col-md-3">
-              <label class="text-primary fw-bold">วันเกิด (พ.ศ.)</label>
-              <div class="input-group input-group-sm">
-                <select class="form-select" id="opd_d" onchange="updateDobService()" style="width:25%"></select>
-                <select class="form-select" id="opd_m" onchange="updateDobService()" style="width:35%"></select>
-                <input type="number" class="form-control" id="opd_y" placeholder="25XX" onchange="updateDobService()" style="width:40%">
-              </div>
-            </div>
-            <div class="col-md-1"><label>อายุ</label><input type="text" class="form-control" name="opd_age" id="opd_age" readonly style="background:#f0f0f0;"></div>
-            <div class="col-md-3"><label class="text-primary fw-bold">เพศ</label><select class="form-select" name="opd_gender" id="opd_gender"><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>
-            <div class="col-md-3"><label class="text-primary fw-bold">เบอร์โทร</label><input type="text" class="form-control" name="opd_phone" id="opd_phone"></div>
-            <div class="col-md-12 mt-2">
-              <label class="text-primary fw-bold">ที่อยู่ (ค้นหาด่วน)</label>
-              <div class="card p-2 bg-light border-0 mb-2">
-                <div class="row g-1">
-                   <div class="col-3"><input type="text" class="form-control form-control-sm" id="serv_addr_detail" placeholder="บ้านเลขที่/หมู่" oninput="combineServiceAddr()"></div>
-                   <div class="col-3"><input type="text" class="form-control form-control-sm" id="serv_tambon" placeholder="ตำบล/แขวง" onchange="combineServiceAddr()"></div>
-                   <div class="col-3"><input type="text" class="form-control form-control-sm" id="serv_amphoe" placeholder="อำเภอ/เขต" onchange="combineServiceAddr()"></div>
-                   <div class="col-3"><input type="text" class="form-control form-control-sm" id="serv_province" placeholder="จังหวัด" onchange="combineServiceAddr()"></div>
-                </div>
-              </div>
-              <input type="text" class="form-control" name="opd_address" id="opd_address_final" placeholder="ที่อยู่เต็ม">
-            </div>
-          </div>
-
-          <div class="row g-2 mb-3">
-            <div class="col-md-6"><label class="text-danger fw-bold">แพ้ยา</label><input type="text" class="form-control text-danger" name="opd_allergy" id="opd_allergy"></div>
-            <div class="col-md-6"><label class="text-primary fw-bold">โรคประจำตัว</label><input type="text" class="form-control" name="opd_underlying" id="opd_underlying"></div>
-            <div class="col-12 mt-2">
-              <button type="button" class="btn btn-sm btn-outline-info w-100" onclick="updateProfileOnly()">
-                <i class="bi bi-person-lines-fill"></i> บันทึกแก้ไขประวัติ (รวมแพ้ยา/โรค - ไม่สร้างประวัติการตรวจ)
-              </button>
-            </div>
-          </div>
-
-          <div class="section-title">บันทึกผลตรวจ</div>
-          <div class="row g-2 mb-3"><div class="col-md-12"><label class="fw-bold">อาการ (CC)</label><input type="text" class="form-control" name="cc" id="cc"></div></div>
-          <div class="card bg-light mb-3 border-0"><div class="card-body py-2"><label class="fw-bold mb-2">สัญญาณชีพ (V/S) และ BMI</label>
-               <div class="row g-2">
-                 <div class="col-3"><input type="text" class="form-control form-control-sm" name="bp" id="bp" placeholder="BP"></div>
-                 <div class="col-3"><input type="text" class="form-control form-control-sm" name="hr" id="hr" placeholder="HR"></div>
-                 <div class="col-3"><input type="text" class="form-control form-control-sm" name="rr" id="rr" placeholder="RR"></div>
-                 <div class="col-3"><input type="text" class="form-control form-control-sm" name="bt" id="bt" placeholder="Temp"></div>
-                 <div class="col-3"><input type="number" class="form-control form-control-sm" name="bw" id="bw" placeholder="นน. (kg)" oninput="calcBMI()"></div>
-                 <div class="col-3"><input type="number" class="form-control form-control-sm" name="ht" id="ht" placeholder="สส. (cm)" oninput="calcBMI()"></div>
-                 <div class="col-3"><input type="text" class="form-control form-control-sm" name="bmi" id="bmi" placeholder="BMI" readonly style="background:#e9ecef; font-weight:bold; color:#0d6efd;"></div>
-               </div></div></div>
-
-          <div class="row g-2 mb-3"><div class="col-md-6"><label class="fw-bold">ตรวจร่างกาย (PE)</label><textarea class="form-control" name="pe" id="pe" rows="2"></textarea></div><div class="col-md-6"><label class="fw-bold">ผล Lab</label><textarea class="form-control" name="lab" id="lab" rows="2"></textarea></div>
-          <div class="col-md-12 position-relative">
-            <label class="fw-bold">วินิจฉัย (Dx)</label>
-            <input type="text" class="form-control" name="dx" id="dx" placeholder="ค้นหาชื่อโรค..." onkeyup="searchICD10(this.value)" autocomplete="off">
-            <div id="icd10List" class="icd-suggestion"></div>
-          </div>
-          </div>
-          <div class="card border-info mb-3"><div class="card-header bg-info text-white py-1 small">เลือกยา (Drug Selector)</div><div class="card-body p-2"><div class="row g-2 align-items-end"><div class="col-md-5"><input class="form-control form-control-sm" list="drugListOptions" id="drugInput" placeholder="พิมพ์ชื่อยา..." onchange="autoFillUsage()"><datalist id="drugListOptions"></datalist></div><div class="col-md-5"><input type="text" class="form-control form-control-sm" id="drugUsage" placeholder="วิธีใช้..."></div><div class="col-md-2"><button type="button" class="btn btn-sm btn-primary w-100" onclick="addDrugToRx()">+ เพิ่ม</button></div></div></div></div>
-          <div class="row g-2 mb-3"><div class="col-md-12"><label class="fw-bold">รักษา/ยา (Rx)</label><textarea class="form-control" name="rx" id="rx" rows="4"></textarea></div><div class="col-md-4 offset-md-8"><label>ผู้ตรวจ</label><input type="text" class="form-control" name="doctor" id="doctor"></div></div>
-
-          <div class="row g-2">
-            <div class="col-12"><button type="button" class="btn btn-primary w-100 py-2 mb-2" onclick="saveOPD('NEW_CASE', 'Waiting')"><i class="bi bi-person-plus"></i> ส่งเข้าคิว (สร้างรายการใหม่)</button></div>
-            <div class="col-6"><button type="button" class="btn btn-success w-100 py-2" onclick="saveOPD('NEW_CASE', 'Completed')"><i class="bi bi-check-circle"></i> จบเคส (สร้างใหม่)</button></div>
-            <div class="col-6"><button type="button" class="btn btn-warning w-100 py-2" onclick="saveOPD('UPDATE_CASE', 'Completed')"><i class="bi bi-pencil-square"></i> จบเคส (แก้ไขใบเดิม)</button></div>
-          </div>
-
-        </form>
-        <hr><h5 class="text-secondary mt-4">ประวัติย้อนหลัง</h5><div id="historyList"></div>
-      </div>
+<!-- ==== Login screen ==== -->
+<div id="loginScreen" class="no-print">
+  <div class="login-card">
+    <div class="text-center mb-4">
+      <i class="bi bi-hospital-fill" style="font-size:2.6rem; color:var(--blue-600);"></i>
+      <h4 class="fw-bold mt-2 mb-0">ระบบคลินิกครบวงจร</h4>
+      <div class="text-muted small">กรุณาเข้าสู่ระบบ</div>
     </div>
-
-    <div class="tab-pane fade" id="pills-dashboard">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="text-primary fw-bold"><i class="bi bi-bar-chart-fill"></i> สรุปภาพรวมคลินิก</h5>
-        <button class="btn btn-sm btn-outline-secondary" onclick="loadDashboard()"><i class="bi bi-arrow-clockwise"></i> อัปเดตข้อมูล</button>
-      </div>
-      <div class="row g-3 mb-4">
-        <div class="col-md-4"><div class="card stat-card bg-gradient-success p-3"><div class="d-flex justify-content-between align-items-center"><div><h6 class="mb-0">คนไข้วันนี้</h6><h2 class="mb-0 fw-bold" id="stat-today">0</h2></div><i class="bi bi-people-fill icon-large"></i></div></div></div>
-        <div class="col-md-4"><div class="card stat-card bg-gradient-info p-3"><div class="d-flex justify-content-between align-items-center"><div><h6 class="mb-0">คนไข้เดือนนี้</h6><h2 class="mb-0 fw-bold" id="stat-month">0</h2></div><i class="bi bi-calendar-check-fill icon-large"></i></div></div></div>
-        <div class="col-md-4"><div class="card stat-card bg-gradient-primary p-3"><div class="d-flex justify-content-between align-items-center"><div><h6 class="mb-0">คนไข้สะสม</h6><h2 class="mb-0 fw-bold" id="stat-total">0</h2></div><i class="bi bi-person-vcard-fill icon-large"></i></div></div></div>
-      </div>
-      <div class="row g-3">
-        <div class="col-md-8"><div class="card shadow-sm h-100"><div class="card-header bg-white fw-bold">📉 แนวโน้มคนไข้ (7 วันล่าสุด)</div><div class="card-body"><canvas id="dailyChart"></canvas></div></div></div>
-        <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-header bg-white fw-bold">🏆 5 โรคที่พบบ่อย</div><div class="card-body"><ul class="list-group list-group-flush" id="topDxList"><li class="list-group-item text-center text-muted">กำลังโหลด...</li></ul></div></div></div>
-      </div>
-    </div>
-
-    <div class="tab-pane fade" id="pills-queue"><div class="d-flex justify-content-between align-items-center mb-3"><h5 class="text-primary mb-0">รายการคิวรอตรวจ</h5><button class="btn btn-sm btn-outline-secondary" onclick="loadQueue()"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button></div><div id="queueListArea">กำลังโหลดคิว...</div></div>
-    <div class="tab-pane fade" id="pills-recent"><div class="d-flex justify-content-between align-items-center mb-3"><h5 class="text-primary mb-0">ประวัติล่าสุด (50)</h5><button class="btn btn-sm btn-outline-secondary" onclick="loadRecentActivity()"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button></div><div class="table-responsive"><table class="table table-bordered table-hover"><thead class="table-light"><tr><th>เวลา</th><th>HN</th><th>ชื่อ</th><th>Dx</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="recentActivityBody"><tr><td colspan="6" class="text-center">กำลังโหลด...</td></tr></tbody></table></div></div>
-    <div class="tab-pane fade" id="pills-register">
-       <form id="regForm" onsubmit="submitRegister(event)">
-        <div class="row g-3">
-          <div class="col-md-4"><label>HN</label><input type="text" class="form-control border-primary" name="hn" required placeholder="กำหนดเอง"></div>
-          <div class="col-md-4"><label>CID</label><input type="text" class="form-control" name="cid" required maxlength="17" oninput="autoFormatCID(this)"></div>
-          <div class="col-md-4"><label>เบอร์โทร</label><input type="text" class="form-control" name="phone"></div>
-          <div class="col-md-6"><label>ชื่อ-สกุล</label><input type="text" class="form-control" name="name" required></div>
-          <div class="col-md-6"><label>เพศ</label><select class="form-select" name="gender"><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>
-          <div class="col-md-6"><label>แพ้ยา</label><input type="text" class="form-control" name="allergy" placeholder="-"></div>
-          <div class="col-md-6"><label>โรคประจำตัว</label><input type="text" class="form-control" name="underlying" placeholder="-"></div>
-          <div class="col-12"><button type="submit" class="btn btn-primary w-100 mt-2">ลงทะเบียน</button></div>
-        </div>
-      </form>
-      <hr class="my-4"><h5 class="text-secondary">📋 รายชื่อคนไข้ล่าสุด</h5>
-      <div class="table-responsive"><table class="table table-bordered table-hover hn-table"><thead><tr><th>HN</th><th>ชื่อ-นามสกุล</th><th>เลขบัตร</th></tr></thead><tbody id="recentPatientsBody"><tr><td colspan="3" class="text-center">กำลังโหลด...</td></tr></tbody></table></div>
-    </div>
-    <div class="tab-pane fade" id="pills-database">
-      <div class="d-flex justify-content-between align-items-center mb-3">
-        <h5 class="text-primary fw-bold"><i class="bi bi-database-fill"></i> ฐานข้อมูลคนไข้ทั้งหมด</h5>
-        <button class="btn btn-sm btn-outline-primary" onclick="loadAllPatients()"><i class="bi bi-arrow-clockwise"></i> โหลดข้อมูลใหม่</button>
+    <form id="loginForm" onsubmit="return handleLogin(event)">
+      <div class="mb-3">
+        <label class="form-label fw-bold">ชื่อผู้ใช้</label>
+        <input type="text" class="form-control" id="loginUsername" required autocomplete="username">
       </div>
       <div class="mb-3">
-        <input type="text" class="form-control" id="dbSearch" placeholder="🔍 พิมพ์เพื่อค้นหา (ชื่อ, HN, เบอร์โทร)..." onkeyup="filterPatientTable()">
+        <label class="form-label fw-bold">รหัสผ่าน</label>
+        <input type="password" class="form-control" id="loginPassword" required autocomplete="current-password">
       </div>
-      <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
-        <table class="table table-bordered table-hover" id="patientTable">
-          <thead class="table-light sticky-top">
-            <tr>
-              <th>HN</th>
-              <th>ชื่อ-นามสกุล</th>
-              <th>เลขบัตร (CID)</th>
-              <th>เบอร์โทร</th>
-              <th style="width: 100px;">จัดการ</th>
-            </tr>
-          </thead>
-          <tbody id="patientTableBody">
-            <tr><td colspan="5" class="text-center text-muted">กำลังโหลดข้อมูล...</td></tr>
-          </tbody>
-        </table>
+      <div id="loginError" class="alert alert-danger py-2 small" style="display:none;"></div>
+      <button type="submit" class="btn btn-primary w-100 py-2 fw-bold">เข้าสู่ระบบ</button>
+    </form>
+  </div>
+</div>
+
+<!-- ==== App shell ==== -->
+<div class="app-shell no-print" id="appShell" style="display:none;">
+  <aside class="sidebar">
+    <div class="brand">
+      <div class="brand-title"><i class="bi bi-hospital-fill text-danger"></i> คลินิกครบวงจร</div>
+      <div class="brand-user"><i class="bi bi-person-circle"></i> <span id="sidebarUserName">-</span></div>
+    </div>
+    <ul class="nav flex-column" id="mainTab">
+      <li class="nav-item"><button class="nav-link active" id="tab-service-btn" data-bs-toggle="pill" data-bs-target="#pills-service"><i class="bi bi-clipboard2-pulse me-2"></i>ตรวจรักษา</button></li>
+      <li class="nav-item"><button class="nav-link" id="tab-queue-btn" data-bs-toggle="pill" data-bs-target="#pills-queue" onclick="loadQueue()"><i class="bi bi-hourglass-split me-2"></i>คิวรอตรวจ <span id="queueCount" class="badge bg-danger ms-1">0</span></button></li>
+      <li class="nav-item"><button class="nav-link" id="tab-recent-btn" data-bs-toggle="pill" data-bs-target="#pills-recent" onclick="loadRecentActivity()"><i class="bi bi-clock-history me-2"></i>ประวัติล่าสุด (50)</button></li>
+      <li class="nav-item"><button class="nav-link" id="tab-register-btn" data-bs-toggle="pill" data-bs-target="#pills-register" onclick="loadRecentPatients()"><i class="bi bi-person-plus me-2"></i>ลงทะเบียนใหม่</button></li>
+      <li class="nav-item"><button class="nav-link" id="tab-dashboard-btn" data-bs-toggle="pill" data-bs-target="#pills-dashboard" onclick="loadDashboard()"><i class="bi bi-bar-chart-fill me-2"></i>สรุปภาพรวม</button></li>
+      <li class="nav-item"><button class="nav-link" id="tab-database-btn" data-bs-toggle="pill" data-bs-target="#pills-database" onclick="loadAllPatients()"><i class="bi bi-database-fill me-2"></i>ฐานข้อมูลคนไข้</button></li>
+    </ul>
+    <div class="logout-area">
+      <button class="btn btn-outline-light btn-sm w-100" onclick="handleLogout()"><i class="bi bi-box-arrow-right me-1"></i> ออกจากระบบ</button>
+      <div class="text-center small text-white-50 mt-3">Developed by Patiyut Aupapong</div>
+    </div>
+  </aside>
+
+  <div class="main-content">
+    <div class="tab-content">
+
+      <div class="tab-pane fade show active" id="pills-service">
+        <div class="page-card">
+        <div class="input-group mb-3">
+          <input type="text" id="searchText" class="form-control" placeholder="พิมพ์ HN, เลขบัตร หรือ ชื่อ...">
+          <button class="btn btn-primary" onclick="searchPatient()">ค้นหา</button>
+        </div>
+
+        <div id="serviceArea" style="display:none;">
+          <div class="alert alert-warning edit-mode-alert" id="editAlert">
+            <strong id="editMsg"><i class="bi bi-pencil-square"></i> กำลังแก้ไขประวัติเก่า</strong>
+            <button class="btn btn-sm btn-outline-dark ms-3" onclick="cancelEdit()">ล้างค่า (เริ่มใหม่)</button>
+          </div>
+
+          <form id="opdForm" onsubmit="return false;">
+            <input type="hidden" name="opd_row_index" id="opd_row_index">
+            <input type="hidden" name="original_hn" id="original_hn">
+            <input type="hidden" name="visit_status" id="visit_status">
+            <input type="hidden" name="opd_dob" id="opd_dob">
+
+            <div class="section-title">ข้อมูลผู้ป่วย</div>
+            <div class="row g-2 mb-3">
+              <div class="col-md-2"><label class="text-primary fw-bold">HN</label><input type="text" class="form-control" name="opd_hn" id="opd_hn"></div>
+              <div class="col-md-3"><label class="text-primary fw-bold">CID</label><input type="text" class="form-control" name="opd_cid" id="opd_cid" maxlength="17" oninput="autoFormatCID(this)"></div>
+              <div class="col-md-3"><label class="text-primary fw-bold">ชื่อ-สกุล</label><input type="text" class="form-control" name="opd_name" id="opd_name"></div>
+              <div class="col-md-3">
+                <label class="text-primary fw-bold">วันเกิด (พ.ศ.)</label>
+                <div class="input-group input-group-sm">
+                  <select class="form-select" id="opd_d" onchange="updateDobService()" style="width:25%"></select>
+                  <select class="form-select" id="opd_m" onchange="updateDobService()" style="width:35%"></select>
+                  <input type="number" class="form-control" id="opd_y" placeholder="25XX" onchange="updateDobService()" style="width:40%">
+                </div>
+              </div>
+              <div class="col-md-1"><label>อายุ</label><input type="text" class="form-control" name="opd_age" id="opd_age" readonly style="background:#f0f0f0;"></div>
+              <div class="col-md-3"><label class="text-primary fw-bold">เพศ</label><select class="form-select" name="opd_gender" id="opd_gender"><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>
+              <div class="col-md-3"><label class="text-primary fw-bold">เบอร์โทร</label><input type="text" class="form-control" name="opd_phone" id="opd_phone"></div>
+              <div class="col-md-12 mt-2">
+                <label class="text-primary fw-bold">ที่อยู่ (ค้นหาด่วน)</label>
+                <div class="card p-2 bg-light border-0 mb-2">
+                  <div class="row g-1">
+                     <div class="col-3"><input type="text" class="form-control form-control-sm" id="serv_addr_detail" placeholder="บ้านเลขที่/หมู่" oninput="combineServiceAddr()"></div>
+                     <div class="col-3"><input type="text" class="form-control form-control-sm" id="serv_tambon" placeholder="ตำบล/แขวง" onchange="combineServiceAddr()"></div>
+                     <div class="col-3"><input type="text" class="form-control form-control-sm" id="serv_amphoe" placeholder="อำเภอ/เขต" onchange="combineServiceAddr()"></div>
+                     <div class="col-3"><input type="text" class="form-control form-control-sm" id="serv_province" placeholder="จังหวัด" onchange="combineServiceAddr()"></div>
+                  </div>
+                </div>
+                <input type="text" class="form-control" name="opd_address" id="opd_address_final" placeholder="ที่อยู่เต็ม">
+              </div>
+            </div>
+
+            <div class="row g-2 mb-3">
+              <div class="col-md-6"><label class="text-danger fw-bold">แพ้ยา</label><input type="text" class="form-control text-danger" name="opd_allergy" id="opd_allergy"></div>
+              <div class="col-md-6"><label class="text-primary fw-bold">โรคประจำตัว</label><input type="text" class="form-control" name="opd_underlying" id="opd_underlying"></div>
+              <div class="col-12 mt-2">
+                <button type="button" class="btn btn-sm btn-outline-info w-100" onclick="updateProfileOnly()">
+                  <i class="bi bi-person-lines-fill"></i> บันทึกแก้ไขประวัติ (รวมแพ้ยา/โรค - ไม่สร้างประวัติการตรวจ)
+                </button>
+              </div>
+            </div>
+
+            <div class="section-title">บันทึกผลตรวจ</div>
+            <div class="row g-2 mb-3"><div class="col-md-12"><label class="fw-bold">อาการ (CC)</label><input type="text" class="form-control" name="cc" id="cc"></div></div>
+            <div class="card bg-light mb-3 border-0"><div class="card-body py-2"><label class="fw-bold mb-2">สัญญาณชีพ (V/S) และ BMI</label>
+                 <div class="row g-2">
+                   <div class="col-3"><input type="text" class="form-control form-control-sm" name="bp" id="bp" placeholder="BP"></div>
+                   <div class="col-3"><input type="text" class="form-control form-control-sm" name="hr" id="hr" placeholder="HR"></div>
+                   <div class="col-3"><input type="text" class="form-control form-control-sm" name="rr" id="rr" placeholder="RR"></div>
+                   <div class="col-3"><input type="text" class="form-control form-control-sm" name="bt" id="bt" placeholder="Temp"></div>
+                   <div class="col-3"><input type="number" class="form-control form-control-sm" name="bw" id="bw" placeholder="นน. (kg)" oninput="calcBMI()"></div>
+                   <div class="col-3"><input type="number" class="form-control form-control-sm" name="ht" id="ht" placeholder="สส. (cm)" oninput="calcBMI()"></div>
+                   <div class="col-3"><input type="text" class="form-control form-control-sm" name="bmi" id="bmi" placeholder="BMI" readonly style="background:#e9ecef; font-weight:bold; color:#0d6efd;"></div>
+                 </div></div></div>
+
+            <div class="row g-2 mb-3"><div class="col-md-6"><label class="fw-bold">ตรวจร่างกาย (PE)</label><textarea class="form-control" name="pe" id="pe" rows="2"></textarea></div><div class="col-md-6"><label class="fw-bold">ผล Lab</label><textarea class="form-control" name="lab" id="lab" rows="2"></textarea></div>
+            <div class="col-md-12 position-relative">
+              <label class="fw-bold">วินิจฉัย (Dx)</label>
+              <input type="text" class="form-control" name="dx" id="dx" placeholder="ค้นหาชื่อโรค..." onkeyup="searchICD10(this.value)" autocomplete="off">
+              <div id="icd10List" class="icd-suggestion"></div>
+            </div>
+            </div>
+            <div class="card border-info mb-3"><div class="card-header bg-info text-white py-1 small">เลือกยา (Drug Selector)</div><div class="card-body p-2"><div class="row g-2 align-items-end"><div class="col-md-5"><input class="form-control form-control-sm" list="drugListOptions" id="drugInput" placeholder="พิมพ์ชื่อยา..." onchange="autoFillUsage()"><datalist id="drugListOptions"></datalist></div><div class="col-md-5"><input type="text" class="form-control form-control-sm" id="drugUsage" placeholder="วิธีใช้..."></div><div class="col-md-2"><button type="button" class="btn btn-sm btn-primary w-100" onclick="addDrugToRx()">+ เพิ่ม</button></div></div></div></div>
+            <div class="row g-2 mb-3"><div class="col-md-12"><label class="fw-bold">รักษา/ยา (Rx)</label><textarea class="form-control" name="rx" id="rx" rows="4"></textarea></div><div class="col-md-4 offset-md-8"><label>ผู้ตรวจ</label><input type="text" class="form-control" name="doctor" id="doctor"></div></div>
+
+            <div class="row g-2">
+              <div class="col-12"><button type="button" class="btn btn-primary w-100 py-2 mb-2" onclick="saveOPD('NEW_CASE', 'Waiting')"><i class="bi bi-person-plus"></i> ส่งเข้าคิว (สร้างรายการใหม่)</button></div>
+              <div class="col-6"><button type="button" class="btn btn-success w-100 py-2" onclick="saveOPD('NEW_CASE', 'Completed')"><i class="bi bi-check-circle"></i> จบเคส (สร้างใหม่)</button></div>
+              <div class="col-6"><button type="button" class="btn btn-warning w-100 py-2" onclick="saveOPD('UPDATE_CASE', 'Completed')"><i class="bi bi-pencil-square"></i> จบเคส (แก้ไขใบเดิม)</button></div>
+            </div>
+
+          </form>
+          <hr><h5 class="text-secondary mt-4">ประวัติย้อนหลัง</h5><div id="historyList"></div>
+        </div>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="pills-dashboard">
+        <div class="page-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="text-primary fw-bold"><i class="bi bi-bar-chart-fill"></i> สรุปภาพรวมคลินิก</h5>
+          <button class="btn btn-sm btn-outline-secondary" onclick="loadDashboard()"><i class="bi bi-arrow-clockwise"></i> อัปเดตข้อมูล</button>
+        </div>
+        <div class="row g-3 mb-4">
+          <div class="col-md-4"><div class="card stat-card bg-gradient-success p-3"><div class="d-flex justify-content-between align-items-center"><div><h6 class="mb-0">คนไข้วันนี้</h6><h2 class="mb-0 fw-bold" id="stat-today">0</h2></div><i class="bi bi-people-fill icon-large"></i></div></div></div>
+          <div class="col-md-4"><div class="card stat-card bg-gradient-info p-3"><div class="d-flex justify-content-between align-items-center"><div><h6 class="mb-0">คนไข้เดือนนี้</h6><h2 class="mb-0 fw-bold" id="stat-month">0</h2></div><i class="bi bi-calendar-check-fill icon-large"></i></div></div></div>
+          <div class="col-md-4"><div class="card stat-card bg-gradient-primary p-3"><div class="d-flex justify-content-between align-items-center"><div><h6 class="mb-0">คนไข้สะสม</h6><h2 class="mb-0 fw-bold" id="stat-total">0</h2></div><i class="bi bi-person-vcard-fill icon-large"></i></div></div></div>
+        </div>
+        <div class="row g-3">
+          <div class="col-md-8"><div class="card shadow-sm h-100"><div class="card-header bg-white fw-bold">📉 แนวโน้มคนไข้ (7 วันล่าสุด)</div><div class="card-body"><canvas id="dailyChart"></canvas></div></div></div>
+          <div class="col-md-4"><div class="card shadow-sm h-100"><div class="card-header bg-white fw-bold">🏆 5 โรคที่พบบ่อย</div><div class="card-body"><ul class="list-group list-group-flush" id="topDxList"><li class="list-group-item text-center text-muted">กำลังโหลด...</li></ul></div></div></div>
+        </div>
+        </div>
+      </div>
+
+      <div class="tab-pane fade" id="pills-queue"><div class="page-card"><div class="d-flex justify-content-between align-items-center mb-3"><h5 class="text-primary mb-0">รายการคิวรอตรวจ</h5><button class="btn btn-sm btn-outline-secondary" onclick="loadQueue()"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button></div><div id="queueListArea">กำลังโหลดคิว...</div></div></div>
+      <div class="tab-pane fade" id="pills-recent"><div class="page-card"><div class="d-flex justify-content-between align-items-center mb-3"><h5 class="text-primary mb-0">ประวัติล่าสุด (50)</h5><button class="btn btn-sm btn-outline-secondary" onclick="loadRecentActivity()"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button></div><div class="table-responsive"><table class="table table-bordered table-hover"><thead class="table-light"><tr><th>เวลา</th><th>HN</th><th>ชื่อ</th><th>Dx</th><th>สถานะ</th><th>จัดการ</th></tr></thead><tbody id="recentActivityBody"><tr><td colspan="6" class="text-center">กำลังโหลด...</td></tr></tbody></table></div></div></div>
+      <div class="tab-pane fade" id="pills-register">
+        <div class="page-card">
+         <form id="regForm" onsubmit="submitRegister(event)">
+          <div class="row g-3">
+            <div class="col-md-4"><label>HN</label><input type="text" class="form-control border-primary" name="hn" required placeholder="กำหนดเอง"></div>
+            <div class="col-md-4"><label>CID</label><input type="text" class="form-control" name="cid" required maxlength="17" oninput="autoFormatCID(this)"></div>
+            <div class="col-md-4"><label>เบอร์โทร</label><input type="text" class="form-control" name="phone"></div>
+            <div class="col-md-6"><label>ชื่อ-สกุล</label><input type="text" class="form-control" name="name" required></div>
+            <div class="col-md-6"><label>เพศ</label><select class="form-select" name="gender"><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>
+            <div class="col-md-6"><label>แพ้ยา</label><input type="text" class="form-control" name="allergy" placeholder="-"></div>
+            <div class="col-md-6"><label>โรคประจำตัว</label><input type="text" class="form-control" name="underlying" placeholder="-"></div>
+            <div class="col-12"><button type="submit" class="btn btn-primary w-100 mt-2">ลงทะเบียน</button></div>
+          </div>
+        </form>
+        <hr class="my-4"><h5 class="text-secondary">📋 รายชื่อคนไข้ล่าสุด</h5>
+        <div class="table-responsive"><table class="table table-bordered table-hover hn-table"><thead><tr><th>HN</th><th>ชื่อ-นามสกุล</th><th>เลขบัตร</th></tr></thead><tbody id="recentPatientsBody"><tr><td colspan="3" class="text-center">กำลังโหลด...</td></tr></tbody></table></div>
+        </div>
+      </div>
+      <div class="tab-pane fade" id="pills-database">
+        <div class="page-card">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h5 class="text-primary fw-bold"><i class="bi bi-database-fill"></i> ฐานข้อมูลคนไข้ทั้งหมด</h5>
+          <button class="btn btn-sm btn-outline-primary" onclick="loadAllPatients()"><i class="bi bi-arrow-clockwise"></i> โหลดข้อมูลใหม่</button>
+        </div>
+        <div class="mb-3">
+          <input type="text" class="form-control" id="dbSearch" placeholder="🔍 พิมพ์เพื่อค้นหา (ชื่อ, HN, เบอร์โทร)..." onkeyup="filterPatientTable()">
+        </div>
+        <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+          <table class="table table-bordered table-hover" id="patientTable">
+            <thead class="table-light sticky-top">
+              <tr>
+                <th>HN</th>
+                <th>ชื่อ-นามสกุล</th>
+                <th>เลขบัตร (CID)</th>
+                <th>เบอร์โทร</th>
+                <th style="width: 100px;">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody id="patientTableBody">
+              <tr><td colspan="5" class="text-center text-muted">กำลังโหลดข้อมูล...</td></tr>
+            </tbody>
+          </table>
+        </div>
+        </div>
       </div>
     </div>
   </div>
@@ -285,22 +382,93 @@
   const API_URL   = 'https://script.google.com/macros/s/AKfycbxrtYBPlSp0OH5TQ5KJdRkGXgS8aDHp0oVqE828v7lW48Kl-RyOFx8YspZU_sYzTLkb/exec';
   const API_TOKEN = '1212312121';
 
+  const SESSION_KEY = 'clinic_session_token';
+  const SESSION_NAME_KEY = 'clinic_display_name';
+  var sessionToken = null;
+
+  function saveSession(token, displayName) {
+    sessionToken = token;
+    try { localStorage.setItem(SESSION_KEY, token); localStorage.setItem(SESSION_NAME_KEY, displayName || ''); } catch (e) {}
+  }
+  function clearSession() {
+    sessionToken = null;
+    try { localStorage.removeItem(SESSION_KEY); localStorage.removeItem(SESSION_NAME_KEY); } catch (e) {}
+  }
+  function restoreSession() {
+    try { return { token: localStorage.getItem(SESSION_KEY), name: localStorage.getItem(SESSION_NAME_KEY) }; }
+    catch (e) { return { token: null, name: null }; }
+  }
+
   function callAPI(action, params) {
+    var body = Object.assign({ action: action, token: API_TOKEN, sessionToken: sessionToken }, params || {});
     return fetch(API_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'text/plain;charset=utf-8' }, // กัน CORS preflight บน Apps Script
-      body: JSON.stringify(Object.assign({ action: action, token: API_TOKEN }, params || {}))
+      body: JSON.stringify(body)
     })
       .then(function (r) { return r.json(); })
       .then(function (res) {
-        if (!res.ok) throw new Error(res.error || 'API Error');
+        if (!res.ok) {
+          if (res.error === 'SESSION_EXPIRED') { showLogin('เซสชันหมดอายุ กรุณาเข้าสู่ระบบใหม่'); }
+          throw new Error(res.error || 'API Error');
+        }
         return res.data;
       });
   }
 
   function showApiError(err) {
+    if (err && err.message === 'SESSION_EXPIRED') return; // จัดการด้วย showLogin() ไปแล้ว
     console.error(err);
-    Swal.fire('เกิดข้อผิดพลาด', err.message || String(err), 'error');
+    Swal.fire('เกิดข้อผิดพลาด', (err && err.message) || String(err), 'error');
+  }
+
+  function showLogin(message) {
+    clearSession();
+    document.getElementById('appShell').style.display = 'none';
+    document.getElementById('loginScreen').style.display = 'flex';
+    var el = document.getElementById('loginError');
+    if (message) { el.textContent = message; el.style.display = 'block'; }
+    else { el.style.display = 'none'; }
+  }
+
+  function showApp(displayName) {
+    document.getElementById('loginScreen').style.display = 'none';
+    document.getElementById('appShell').style.display = 'flex';
+    document.getElementById('sidebarUserName').textContent = displayName || '';
+  }
+
+  function handleLogin(e) {
+    e.preventDefault();
+    var username = document.getElementById('loginUsername').value.trim();
+    var password = document.getElementById('loginPassword').value;
+    var errEl = document.getElementById('loginError');
+    errEl.style.display = 'none';
+    var btn = e.target.querySelector('button[type=submit]');
+    btn.disabled = true; btn.innerText = 'กำลังเข้าสู่ระบบ...';
+
+    fetch(API_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'text/plain;charset=utf-8' },
+      body: JSON.stringify({ action: 'login', token: API_TOKEN, username: username, password: password })
+    })
+      .then(function (r) { return r.json(); })
+      .then(function (res) {
+        if (!res.ok) throw new Error(res.error || 'เข้าสู่ระบบไม่สำเร็จ');
+        saveSession(res.data.token, res.data.displayName);
+        showApp(res.data.displayName);
+        initAppData();
+      })
+      .catch(function (err) {
+        errEl.textContent = err.message;
+        errEl.style.display = 'block';
+      })
+      .finally(function () { btn.disabled = false; btn.innerText = 'เข้าสู่ระบบ'; });
+
+    return false;
+  }
+
+  function handleLogout() {
+    callAPI('logout').catch(function () {}).finally(function () { showLogin(); });
   }
   // ===========================================================================
 
@@ -316,11 +484,22 @@
     initThaiDateOptions('opd_d', 'opd_m');
     $.Thailand({ $district: $('#serv_tambon'), $amphoe: $('#serv_amphoe'), $province: $('#serv_province'), onDataFill: function(data){ setTimeout(combineServiceAddr, 100); } });
 
+    var saved = restoreSession();
+    if (saved.token) {
+      sessionToken = saved.token;
+      showApp(saved.name);
+      initAppData();
+    } else {
+      showLogin();
+    }
+  };
+
+  function initAppData() {
     callAPI('getClinicInfo').then(function(info) { if(info) { document.getElementById('c_name').innerText = info.name; document.getElementById('c_address').innerText = info.address; document.getElementById('c_phone').innerText = info.phone; document.getElementById('c_hours').innerText = info.hours; } }).catch(showApiError);
     callAPI('getDrugList').then(function(drugs) { allDrugs = drugs; var dList = document.getElementById('drugListOptions'); var opt=''; drugs.forEach(d=>{opt+=`<option value="${d.name}">`;}); dList.innerHTML=opt; }).catch(showApiError);
     callAPI('getICD10Data').then(function(list) { icd10DB = list; }).catch(showApiError);
     loadRecentPatients(); loadQueue(); loadRecentActivity(); loadDashboard();
-  };
+  }
 
   // --- Database Logic ---
   function loadAllPatients() {
@@ -425,7 +604,7 @@
     document.getElementById('stat-total').innerText = stats.totalCount;
     var ctx = document.getElementById('dailyChart').getContext('2d');
     if (myChart) myChart.destroy();
-    myChart = new Chart(ctx, { type: 'bar', data: { labels: stats.chartDaily.dates, datasets: [{ label: 'จำนวนคนไข้', data: stats.chartDaily.counts, backgroundColor: 'rgba(54, 162, 235, 0.6)', borderColor: 'rgba(54, 162, 235, 1)', borderWidth: 1 }] }, options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } } });
+    myChart = new Chart(ctx, { type: 'bar', data: { labels: stats.chartDaily.dates, datasets: [{ label: 'จำนวนคนไข้', data: stats.chartDaily.counts, backgroundColor: 'rgba(21, 101, 192, 0.6)', borderColor: 'rgba(21, 101, 192, 1)', borderWidth: 1 }] }, options: { scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } } } });
     var dxHtml = ''; if (stats.topDx.length === 0) { dxHtml = '<li class="list-group-item text-center">ไม่มีข้อมูล</li>'; } else { stats.topDx.forEach((dx, index) => { dxHtml += `<li class="list-group-item d-flex justify-content-between align-items-center">${index+1}. ${dx[0]} <span class="badge bg-primary rounded-pill">${dx[1]}</span></li>`; }); } document.getElementById('topDxList').innerHTML = dxHtml;
   }
 

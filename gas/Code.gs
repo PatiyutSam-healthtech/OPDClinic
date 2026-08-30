@@ -500,6 +500,117 @@ function getVisitByRow(rowIndex) {
 }
 
 
+// ==== AUTH (ใหม่) — Username/Password login ================================
+// สร้าง 2 sheet ใหม่แบบ additive เท่านั้น (ไม่แตะ sheet เดิม):
+//   Users:    Username | PasswordHash | DisplayName | Active
+//   Sessions: Token | Username | ExpiresAt
+
+var SESSION_DURATION_MS = 12 * 60 * 60 * 1000; // อายุ session 12 ชั่วโมง
+
+function getOrCreateUsersSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Users');
+  if (!sheet) {
+    sheet = ss.insertSheet('Users');
+    sheet.appendRow(['Username', 'PasswordHash', 'DisplayName', 'Active']);
+  }
+  return sheet;
+}
+
+function getOrCreateSessionsSheet() {
+  var ss = SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName('Sessions');
+  if (!sheet) {
+    sheet = ss.insertSheet('Sessions');
+    sheet.appendRow(['Token', 'Username', 'ExpiresAt']);
+  }
+  return sheet;
+}
+
+function hashPassword(password) {
+  var bytes = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, String(password), Utilities.Charset.UTF_8);
+  return bytes.map(function (b) { return ('0' + (b & 0xFF).toString(16)).slice(-2); }).join('');
+}
+
+/**
+ * รันฟังก์ชันนี้เองจาก Apps Script Editor เท่านั้น (เลือกฟังก์ชันแล้วกด Run)
+ * เพื่อสร้าง/รีเซ็ตรหัสผ่านผู้ใช้ — ไม่ได้เปิดให้เรียกผ่าน API เพื่อความปลอดภัย
+ */
+function createOrUpdateUser(username, plainPassword, displayName) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var sheet = getOrCreateUsersSheet();
+    var data = sheet.getDataRange().getValues();
+    var hash = hashPassword(plainPassword);
+    for (var i = 1; i < data.length; i++) {
+      if (data[i][0] === username) {
+        sheet.getRange(i + 1, 2).setValue(hash);
+        sheet.getRange(i + 1, 3).setValue(displayName || data[i][2]);
+        sheet.getRange(i + 1, 4).setValue(true);
+        return 'Updated: ' + username;
+      }
+    }
+    sheet.appendRow([username, hash, displayName || username, true]);
+    return 'Created: ' + username;
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/**
+ * ตัวอย่าง: แก้ 3 ค่าด้านล่างแล้วเลือกฟังก์ชันนี้ใน Run dropdown กด Run ครั้งเดียว
+ * เพื่อสร้างบัญชีแรก จากนั้นจะลบทิ้งหรือปล่อยไว้ก็ได้ (ใช้สร้าง/รีเซ็ตรหัสผ่านภายหลังได้เรื่อยๆ)
+ */
+function _seedAdminUser() {
+  Logger.log(createOrUpdateUser('admin', 'ChangeMe123!', 'ผู้ดูแลระบบ'));
+}
+
+function login(username, password) {
+  var sheet = getOrCreateUsersSheet();
+  var data = sheet.getDataRange().getValues();
+  var hash = hashPassword(password);
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === username) {
+      if (data[i][3] === false || String(data[i][3]).toUpperCase() === 'FALSE') {
+        throw new Error('บัญชีนี้ถูกระงับการใช้งาน');
+      }
+      if (data[i][1] !== hash) break;
+      var token = Utilities.getUuid();
+      var sessSheet = getOrCreateSessionsSheet();
+      sessSheet.appendRow([token, username, Date.now() + SESSION_DURATION_MS]);
+      return { token: token, displayName: data[i][2] || username };
+    }
+  }
+  throw new Error('ชื่อผู้ใช้หรือรหัสผ่านไม่ถูกต้อง');
+}
+
+function validateSession(token) {
+  if (!token) return null;
+  var sheet = getOrCreateSessionsSheet();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === token) {
+      if (Number(data[i][2]) < Date.now()) return null;
+      return data[i][1];
+    }
+  }
+  return null;
+}
+
+function logout(token) {
+  var sheet = getOrCreateSessionsSheet();
+  var data = sheet.getDataRange().getValues();
+  for (var i = 1; i < data.length; i++) {
+    if (data[i][0] === token) {
+      sheet.deleteRow(i + 1);
+      break;
+    }
+  }
+  return 'ok';
+}
+
+
 // ==== API LAYER (ใหม่) ======================================================
 // ตั้งค่า Script Properties ก่อนใช้งาน:
 //   Project Settings > Script Properties > Add script property
@@ -532,8 +643,18 @@ function handleApi(action, p) {
       return jsonOut({ ok: false, error: 'Unauthorized' });
     }
 
+    if (action === 'login') {
+      return jsonOut({ ok: true, data: login(p.username, p.password) });
+    }
+
+    var loggedInUser = validateSession(p.sessionToken);
+    if (!loggedInUser) {
+      return jsonOut({ ok: false, error: 'SESSION_EXPIRED' });
+    }
+
     var data;
     switch (action) {
+      case 'logout':                 data = logout(p.sessionToken); break;
       case 'getClinicInfo':          data = getClinicInfo(); break;
       case 'getDrugList':            data = getDrugList(); break;
       case 'getICD10Data':           data = getICD10Data(); break;
