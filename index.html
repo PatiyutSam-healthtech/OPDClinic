@@ -927,6 +927,7 @@
   }
 
   function fillForm(p, v) {
+    console.log('[DEBUG fillForm] patient object received:', p);
     document.getElementById('serviceArea').style.display='block';
     document.getElementById('original_hn').value = p.hn; document.getElementById('opd_hn').value = p.hn;
     document.getElementById('opd_cid').value = p.cid; document.getElementById('opd_name').value = p.name;
@@ -968,6 +969,7 @@
     cancelEdit();
     callAPI('searchPatientData', { text: txt }).then(res => {
       Swal.close();
+      console.log('[DEBUG searchPatientData] raw response:', res);
       if (res.status === 'not_found') {
         Swal.fire('ไม่พบข้อมูล', '', 'error');
         document.getElementById('serviceArea').style.display='none';

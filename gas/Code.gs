@@ -62,10 +62,25 @@ function safeDateStr(val) {
   if (!val) return "";
   try {
     if (Object.prototype.toString.call(val) === '[object Date]') {
+      if (isNaN(val.getTime())) return "";
       return Utilities.formatDate(val, "GMT+7", "yyyy-MM-dd");
     }
     var str = String(val).replace(/'/g, "").trim();
-    if (str.match(/^\d{4}-\d{2}-\d{2}$/)) return str;
+
+    // ISO ตรงเป๊ะ หรือมี time component ต่อท้าย (เช่น "1955-05-01T00:00:00.000Z")
+    var isoMatch = str.match(/^(\d{4})-(\d{2})-(\d{2})/);
+    if (isoMatch) return isoMatch[1] + "-" + isoMatch[2] + "-" + isoMatch[3];
+
+    // รูปแบบ d/m/yyyy หรือ d-m-yyyy หรือ d.m.yyyy (รองรับทั้งปี ค.ศ. และ พ.ศ.)
+    var altMatch = str.match(/^(\d{1,2})[\/\-.](\d{1,2})[\/\-.](\d{4})$/);
+    if (altMatch) {
+      var dd = ('0' + altMatch[1]).slice(-2);
+      var mm = ('0' + altMatch[2]).slice(-2);
+      var yyyy = parseInt(altMatch[3], 10);
+      if (yyyy > 2400) yyyy -= 543;
+      return yyyy + "-" + mm + "-" + dd;
+    }
+
     return "";
   } catch (e) { return ""; }
 }
