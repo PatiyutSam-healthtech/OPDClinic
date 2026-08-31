@@ -487,6 +487,26 @@ function getWaitingList() {
   return queue;
 }
 
+// นำคนไข้ออกจากคิว (ยกเลิกตรวจ/กลับบ้านก่อนถึงคิว) — เปลี่ยนสถานะเป็น "Cancelled"
+// ไม่ลบแถวทิ้ง เพื่อให้ยังมีประวัติไว้ตรวจสอบย้อนหลังได้
+function cancelQueueEntry(rowIndex) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var row = parseInt(rowIndex, 10);
+    if (isNaN(row) || row < 2) throw new Error('แถวไม่ถูกต้อง');
+    var sheet = getOrCreateOPDSheet();
+    var statusCell = sheet.getRange(row, 24);
+    if (statusCell.getValue() !== 'Waiting') {
+      throw new Error('รายการนี้ไม่ได้อยู่ในสถานะรอตรวจแล้ว (อาจถูกจัดการไปแล้ว)');
+    }
+    statusCell.setValue('Cancelled');
+    return 'นำคนไข้ออกจากคิวเรียบร้อยแล้ว';
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 function getVisitsByMonth(year, month) {
   var y = parseInt(year, 10);
   var m = parseInt(month, 10); // 1-12
@@ -847,6 +867,7 @@ function handleApi(action, p) {
       case 'searchPatientData':      data = searchPatientData(p.text); break;
       case 'getDashboardStats':      data = getDashboardStats(); break;
       case 'getWaitingList':         data = getWaitingList(); break;
+      case 'cancelQueueEntry':       data = cancelQueueEntry(p.rowIndex); break;
       case 'getRecentActivity':      data = getRecentActivity(); break;
       case 'getVisitsByMonth':       data = getVisitsByMonth(p.year, p.month); break;
       case 'getVisitByRow':          data = getVisitByRow(p.rowIndex); break;
