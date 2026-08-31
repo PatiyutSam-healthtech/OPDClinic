@@ -158,6 +158,7 @@
       <li class="nav-item"><button class="nav-link" id="tab-register-btn" data-bs-toggle="pill" data-bs-target="#pills-register" onclick="loadRecentPatients()"><i class="bi bi-person-plus me-2"></i>ลงทะเบียนใหม่</button></li>
       <li class="nav-item"><button class="nav-link" id="tab-dashboard-btn" data-bs-toggle="pill" data-bs-target="#pills-dashboard" onclick="loadDashboard()"><i class="bi bi-bar-chart-fill me-2"></i>สรุปภาพรวม</button></li>
       <li class="nav-item"><button class="nav-link" id="tab-database-btn" data-bs-toggle="pill" data-bs-target="#pills-database" onclick="loadAllPatients()"><i class="bi bi-database-fill me-2"></i>ฐานข้อมูลคนไข้</button></li>
+      <li class="nav-item"><button class="nav-link" id="tab-reference-btn" data-bs-toggle="pill" data-bs-target="#pills-reference" onclick="loadDrugList(); loadICD10List();"><i class="bi bi-capsule me-2"></i>ยา/วินิจฉัย</button></li>
       <li class="nav-item" id="tab-users-item" style="display:none;"><button class="nav-link" id="tab-users-btn" data-bs-toggle="pill" data-bs-target="#pills-users" onclick="loadUsers()"><i class="bi bi-people-fill me-2"></i>จัดการผู้ใช้</button></li>
     </ul>
     <div class="logout-area">
@@ -349,6 +350,41 @@
         </div>
         </div>
       </div>
+      <div class="tab-pane fade" id="pills-reference">
+        <div class="page-card mb-3">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="text-primary fw-bold"><i class="bi bi-capsule"></i> รายการยา</h5>
+            <div>
+              <button class="btn btn-sm btn-outline-secondary me-2" onclick="loadDrugList()"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button>
+              <button class="btn btn-sm btn-primary" onclick="openDrugModal()"><i class="bi bi-plus-lg"></i> เพิ่มยาใหม่</button>
+            </div>
+          </div>
+          <div class="mb-2"><input type="text" class="form-control form-control-sm" id="drugListSearch" placeholder="🔍 ค้นหาชื่อยา..." onkeyup="filterDrugTable()"></div>
+          <div class="table-responsive" style="max-height:360px; overflow-y:auto;">
+            <table class="table table-bordered table-hover table-sm">
+              <thead class="table-light sticky-top"><tr><th>ชื่อยา</th><th>วิธีใช้</th><th style="width:90px;">จัดการ</th></tr></thead>
+              <tbody id="drugListBody"><tr><td colspan="3" class="text-center">กำลังโหลด...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+
+        <div class="page-card">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="text-primary fw-bold"><i class="bi bi-clipboard2-pulse"></i> รายการวินิจฉัย (ICD10)</h5>
+            <div>
+              <button class="btn btn-sm btn-outline-secondary me-2" onclick="loadICD10List()"><i class="bi bi-arrow-clockwise"></i> รีเฟรช</button>
+              <button class="btn btn-sm btn-primary" onclick="openICD10Modal()"><i class="bi bi-plus-lg"></i> เพิ่มรายการวินิจฉัย</button>
+            </div>
+          </div>
+          <div class="mb-2"><input type="text" class="form-control form-control-sm" id="icd10ListSearch" placeholder="🔍 ค้นหารหัส/คำอธิบาย..." onkeyup="filterICD10Table()"></div>
+          <div class="table-responsive" style="max-height:360px; overflow-y:auto;">
+            <table class="table table-bordered table-hover table-sm">
+              <thead class="table-light sticky-top"><tr><th style="width:110px;">รหัส</th><th>คำอธิบาย</th><th style="width:90px;">จัดการ</th></tr></thead>
+              <tbody id="icd10ListBody"><tr><td colspan="3" class="text-center">กำลังโหลด...</td></tr></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
       <div class="tab-pane fade" id="pills-users">
         <div class="page-card">
         <div class="d-flex justify-content-between align-items-center mb-3">
@@ -528,6 +564,50 @@
         </div>
       </div>
       <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ปิด</button></div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="drugModal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="drugForm" onsubmit="return submitDrugForm(event)">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="drugModalTitle"><i class="bi bi-capsule"></i> เพิ่มยาใหม่</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="drugRowIndex">
+          <div class="mb-3"><label class="form-label fw-bold">ชื่อยา</label><input type="text" class="form-control" id="drugNameInput" required></div>
+          <div class="mb-3"><label class="form-label fw-bold">วิธีใช้</label><input type="text" class="form-control" id="drugUsageInput"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึก</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="icd10Modal" tabindex="-1">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <form id="icd10Form" onsubmit="return submitICD10Form(event)">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title" id="icd10ModalTitle"><i class="bi bi-clipboard2-pulse"></i> เพิ่มรายการวินิจฉัย</h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="icd10RowIndex">
+          <div class="mb-3"><label class="form-label fw-bold">รหัส ICD10</label><input type="text" class="form-control" id="icd10CodeInput" required></div>
+          <div class="mb-3"><label class="form-label fw-bold">คำอธิบาย</label><input type="text" class="form-control" id="icd10DescInput"></div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึก</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -749,7 +829,9 @@
 
   var allDrugs = [];
   var icd10DB = [];
-  var candidateModal, historyModal, createUserModal, editUserModal, helpModal, editPatientModal;
+  var drugListCache = [];
+  var icd10ListCache = [];
+  var candidateModal, historyModal, createUserModal, editUserModal, helpModal, editPatientModal, drugModal, icd10Modal;
   var myChart = null;
   var allPatientsCache = [];
   var usersCache = [];
@@ -761,6 +843,8 @@
     editUserModal = new bootstrap.Modal(document.getElementById('editUserModal'));
     helpModal = new bootstrap.Modal(document.getElementById('helpModal'));
     editPatientModal = new bootstrap.Modal(document.getElementById('editPatientModal'));
+    drugModal = new bootstrap.Modal(document.getElementById('drugModal'));
+    icd10Modal = new bootstrap.Modal(document.getElementById('icd10Modal'));
     initThaiDateOptions('editPatientD', 'editPatientM');
     initExportSelectors();
     setInterval(function () {
@@ -782,8 +866,8 @@
 
   function initAppData() {
     callAPI('getClinicInfo').then(function(info) { if(info) { document.getElementById('c_name').innerText = info.name; document.getElementById('c_address').innerText = info.address; document.getElementById('c_phone').innerText = info.phone; document.getElementById('c_hours').innerText = info.hours; } }).catch(showApiError);
-    callAPI('getDrugList').then(function(drugs) { allDrugs = drugs; var dList = document.getElementById('drugListOptions'); var opt=''; drugs.forEach(d=>{opt+=`<option value="${d.name}">`;}); dList.innerHTML=opt; }).catch(showApiError);
-    callAPI('getICD10Data').then(function(list) { icd10DB = list; }).catch(showApiError);
+    loadDrugList();
+    loadICD10List();
     loadRecentPatients(); loadQueue(); loadRecentActivity(); loadDashboard();
   }
 
@@ -1318,6 +1402,175 @@
       callAPI('resetUserPassword', { username: username, newPassword: result.value })
         .then(function(msg) { Swal.fire('สำเร็จ', msg, 'success'); })
         .catch(showApiError);
+    });
+  }
+
+  // ==== จัดการรายการยา / ICD10 ================================================
+  function loadDrugList() {
+    var tbody = document.getElementById('drugListBody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="text-center">กำลังโหลด...</td></tr>';
+    callAPI('getDrugList').then(function(list) {
+      drugListCache = list;
+      renderDrugTable(list);
+      allDrugs = list;
+      var dList = document.getElementById('drugListOptions');
+      if (dList) { var opt = ''; list.forEach(d => { opt += `<option value="${d.name}">`; }); dList.innerHTML = opt; }
+    }).catch(showApiError);
+  }
+
+  function renderDrugTable(list) {
+    var tbody = document.getElementById('drugListBody');
+    if (!tbody) return;
+    if (list.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">ไม่มีข้อมูล</td></tr>'; return; }
+    var html = '';
+    list.forEach(d => {
+      html += `<tr>
+        <td>${d.name}</td>
+        <td>${d.usage || '-'}</td>
+        <td class="text-nowrap">
+          <button class="btn btn-sm btn-outline-primary me-1" onclick="openDrugModal(${d.rowIndex})" title="แก้ไข"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteDrug(${d.rowIndex})" title="ลบ"><i class="bi bi-trash"></i></button>
+        </td>
+      </tr>`;
+    });
+    tbody.innerHTML = html;
+  }
+
+  function filterDrugTable() {
+    var txt = document.getElementById('drugListSearch').value.toLowerCase();
+    renderDrugTable(drugListCache.filter(d => d.name.toLowerCase().includes(txt)));
+  }
+
+  function openDrugModal(rowIndex) {
+    document.getElementById('drugForm').reset();
+    if (rowIndex) {
+      var d = drugListCache.find(x => x.rowIndex === rowIndex);
+      document.getElementById('drugModalTitle').innerHTML = '<i class="bi bi-pencil-square"></i> แก้ไขยา';
+      document.getElementById('drugRowIndex').value = rowIndex;
+      document.getElementById('drugNameInput').value = d ? d.name : '';
+      document.getElementById('drugUsageInput').value = d ? d.usage : '';
+    } else {
+      document.getElementById('drugModalTitle').innerHTML = '<i class="bi bi-capsule"></i> เพิ่มยาใหม่';
+      document.getElementById('drugRowIndex').value = '';
+    }
+    drugModal.show();
+  }
+
+  function submitDrugForm(e) {
+    e.preventDefault();
+    var rowIndex = document.getElementById('drugRowIndex').value;
+    var name = document.getElementById('drugNameInput').value.trim();
+    var usage = document.getElementById('drugUsageInput').value.trim();
+    var action = rowIndex ? 'updateDrug' : 'addNewDrug';
+    var params = rowIndex ? { rowIndex: rowIndex, name: name, usage: usage } : { name: name, usage: usage };
+    callAPI(action, params).then(function(msg) {
+      if (msg === 'Exist') { Swal.fire('มีอยู่แล้ว', 'มียาชื่อนี้ในระบบแล้ว', 'warning'); return; }
+      Swal.fire('สำเร็จ', msg, 'success');
+      drugModal.hide();
+      loadDrugList();
+    }).catch(showApiError);
+    return false;
+  }
+
+  function confirmDeleteDrug(rowIndex) {
+    var d = drugListCache.find(x => x.rowIndex === rowIndex);
+    Swal.fire({
+      title: 'ลบรายการยานี้?',
+      html: d ? `<strong>${d.name}</strong>` : '',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'ลบ',
+      confirmButtonColor: '#dc3545',
+      cancelButtonText: 'ยกเลิก'
+    }).then(function(result) {
+      if (!result.isConfirmed) return;
+      callAPI('deleteDrug', { rowIndex: rowIndex }).then(function(msg) {
+        Swal.fire({ icon: 'success', title: msg, timer: 1200, showConfirmButton: false });
+        loadDrugList();
+      }).catch(showApiError);
+    });
+  }
+
+  function loadICD10List() {
+    var tbody = document.getElementById('icd10ListBody');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="3" class="text-center">กำลังโหลด...</td></tr>';
+    callAPI('getICD10Data').then(function(list) {
+      icd10ListCache = list;
+      renderICD10Table(list);
+      icd10DB = list;
+    }).catch(showApiError);
+  }
+
+  function renderICD10Table(list) {
+    var tbody = document.getElementById('icd10ListBody');
+    if (!tbody) return;
+    if (list.length === 0) { tbody.innerHTML = '<tr><td colspan="3" class="text-center text-muted">ไม่มีข้อมูล</td></tr>'; return; }
+    var html = '';
+    list.forEach(item => {
+      html += `<tr>
+        <td class="fw-bold text-danger">${item.code}</td>
+        <td>${item.desc || '-'}</td>
+        <td class="text-nowrap">
+          <button class="btn btn-sm btn-outline-primary me-1" onclick="openICD10Modal(${item.rowIndex})" title="แก้ไข"><i class="bi bi-pencil"></i></button>
+          <button class="btn btn-sm btn-outline-danger" onclick="confirmDeleteICD10(${item.rowIndex})" title="ลบ"><i class="bi bi-trash"></i></button>
+        </td>
+      </tr>`;
+    });
+    tbody.innerHTML = html;
+  }
+
+  function filterICD10Table() {
+    var txt = document.getElementById('icd10ListSearch').value.toLowerCase();
+    renderICD10Table(icd10ListCache.filter(item => (item.code + ' ' + item.desc).toLowerCase().includes(txt)));
+  }
+
+  function openICD10Modal(rowIndex) {
+    document.getElementById('icd10Form').reset();
+    if (rowIndex) {
+      var item = icd10ListCache.find(x => x.rowIndex === rowIndex);
+      document.getElementById('icd10ModalTitle').innerHTML = '<i class="bi bi-pencil-square"></i> แก้ไขรายการวินิจฉัย';
+      document.getElementById('icd10RowIndex').value = rowIndex;
+      document.getElementById('icd10CodeInput').value = item ? item.code : '';
+      document.getElementById('icd10DescInput').value = item ? item.desc : '';
+    } else {
+      document.getElementById('icd10ModalTitle').innerHTML = '<i class="bi bi-clipboard2-pulse"></i> เพิ่มรายการวินิจฉัย';
+      document.getElementById('icd10RowIndex').value = '';
+    }
+    icd10Modal.show();
+  }
+
+  function submitICD10Form(e) {
+    e.preventDefault();
+    var rowIndex = document.getElementById('icd10RowIndex').value;
+    var code = document.getElementById('icd10CodeInput').value.trim();
+    var desc = document.getElementById('icd10DescInput').value.trim();
+    var action = rowIndex ? 'updateICD10' : 'addICD10';
+    var params = rowIndex ? { rowIndex: rowIndex, code: code, desc: desc } : { code: code, desc: desc };
+    callAPI(action, params).then(function(msg) {
+      if (msg === 'Exist') { Swal.fire('มีอยู่แล้ว', 'มีรหัสนี้ในระบบแล้ว', 'warning'); return; }
+      Swal.fire('สำเร็จ', msg, 'success');
+      icd10Modal.hide();
+      loadICD10List();
+    }).catch(showApiError);
+    return false;
+  }
+
+  function confirmDeleteICD10(rowIndex) {
+    var item = icd10ListCache.find(x => x.rowIndex === rowIndex);
+    Swal.fire({
+      title: 'ลบรายการวินิจฉัยนี้?',
+      html: item ? `<strong>${item.code}</strong> — ${item.desc || ''}` : '',
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonText: 'ลบ',
+      confirmButtonColor: '#dc3545',
+      cancelButtonText: 'ยกเลิก'
+    }).then(function(result) {
+      if (!result.isConfirmed) return;
+      callAPI('deleteICD10', { rowIndex: rowIndex }).then(function(msg) {
+        Swal.fire({ icon: 'success', title: msg, timer: 1200, showConfirmButton: false });
+        loadICD10List();
+      }).catch(showApiError);
     });
   }
 

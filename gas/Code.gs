@@ -100,14 +100,22 @@ function getClinicInfo() {
   return { name: data[0], address: data[1], phone: data[2], hours: data[3] };
 }
 
-function getDrugList() {
+function getOrCreateDrugsSheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName('Drugs');
-  if (!sheet) return [];
+  if (!sheet) {
+    sheet = ss.insertSheet('Drugs');
+    sheet.appendRow(['Name', 'Usage']);
+  }
+  return sheet;
+}
+
+function getDrugList() {
+  var sheet = getOrCreateDrugsSheet();
   var data = sheet.getDataRange().getValues();
   var drugs = [];
   for (var i = 1; i < data.length; i++) {
-    if (data[i][0] != "") drugs.push({ name: data[i][0], usage: data[i][1] });
+    if (data[i][0] != "") drugs.push({ rowIndex: i + 1, name: data[i][0], usage: data[i][1] });
   }
   return drugs;
 }
@@ -116,8 +124,8 @@ function addNewDrug(name, usage) {
   var lock = LockService.getScriptLock();
   lock.waitLock(10000);
   try {
-    var ss = SpreadsheetApp.getActiveSpreadsheet();
-    var sheet = ss.getSheetByName('Drugs');
+    if (!name) throw new Error('กรุณากรอกชื่อยา');
+    var sheet = getOrCreateDrugsSheet();
     var data = sheet.getDataRange().getValues();
     for (var i = 1; i < data.length; i++) {
       if (data[i][0] == name) return "Exist";
@@ -129,7 +137,35 @@ function addNewDrug(name, usage) {
   }
 }
 
-function getICD10Data() {
+function updateDrug(rowIndex, name, usage) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var row = parseInt(rowIndex, 10);
+    if (isNaN(row) || row < 2) throw new Error('แถวไม่ถูกต้อง');
+    if (!name) throw new Error('กรุณากรอกชื่อยา');
+    var sheet = getOrCreateDrugsSheet();
+    sheet.getRange(row, 1, 1, 2).setValues([[name, usage || '']]);
+    return 'บันทึกข้อมูลยาเรียบร้อยแล้ว';
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function deleteDrug(rowIndex) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var row = parseInt(rowIndex, 10);
+    if (isNaN(row) || row < 2) throw new Error('แถวไม่ถูกต้อง');
+    getOrCreateDrugsSheet().deleteRow(row);
+    return 'ลบรายการยาเรียบร้อยแล้ว';
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function getOrCreateICD10Sheet() {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
   var sheet = ss.getSheetByName('ICD10');
   if (!sheet) {
@@ -144,12 +180,62 @@ function getICD10Data() {
     ];
     sheet.getRange(2, 1, commonData.length, 2).setValues(commonData);
   }
+  return sheet;
+}
+
+function getICD10Data() {
+  var sheet = getOrCreateICD10Sheet();
   var data = sheet.getDataRange().getValues();
   var list = [];
   for (var i = 1; i < data.length; i++) {
-    if (data[i][0]) list.push({ code: data[i][0], desc: data[i][1] });
+    if (data[i][0]) list.push({ rowIndex: i + 1, code: data[i][0], desc: data[i][1] });
   }
   return list;
+}
+
+function addICD10(code, desc) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    if (!code) throw new Error('กรุณากรอกรหัส ICD10');
+    var sheet = getOrCreateICD10Sheet();
+    var data = sheet.getDataRange().getValues();
+    for (var i = 1; i < data.length; i++) {
+      if (String(data[i][0]).trim().toUpperCase() === String(code).trim().toUpperCase()) return 'Exist';
+    }
+    sheet.appendRow([code, desc || '']);
+    return 'Saved';
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function updateICD10(rowIndex, code, desc) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var row = parseInt(rowIndex, 10);
+    if (isNaN(row) || row < 2) throw new Error('แถวไม่ถูกต้อง');
+    if (!code) throw new Error('กรุณากรอกรหัส ICD10');
+    var sheet = getOrCreateICD10Sheet();
+    sheet.getRange(row, 1, 1, 2).setValues([[code, desc || '']]);
+    return 'บันทึกข้อมูลวินิจฉัยเรียบร้อยแล้ว';
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+function deleteICD10(rowIndex) {
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var row = parseInt(rowIndex, 10);
+    if (isNaN(row) || row < 2) throw new Error('แถวไม่ถูกต้อง');
+    getOrCreateICD10Sheet().deleteRow(row);
+    return 'ลบรายการวินิจฉัยเรียบร้อยแล้ว';
+  } finally {
+    lock.releaseLock();
+  }
 }
 
 function getAllPatientsList() {
@@ -875,6 +961,11 @@ function handleApi(action, p) {
       case 'updateProfileOnly':      data = updateProfileOnly(p.form); break;
       case 'saveOPDVisit':           data = saveOPDVisit(p.form); break;
       case 'addNewDrug':             data = addNewDrug(p.name, p.usage); break;
+      case 'updateDrug':             data = updateDrug(p.rowIndex, p.name, p.usage); break;
+      case 'deleteDrug':             data = deleteDrug(p.rowIndex); break;
+      case 'addICD10':               data = addICD10(p.code, p.desc); break;
+      case 'updateICD10':            data = updateICD10(p.rowIndex, p.code, p.desc); break;
+      case 'deleteICD10':            data = deleteICD10(p.rowIndex); break;
       default:
         return jsonOut({ ok: false, error: 'Unknown action: ' + action });
     }
