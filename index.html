@@ -927,7 +927,6 @@
   }
 
   function fillForm(p, v) {
-    console.log('[DEBUG fillForm] patient object received:', p);
     document.getElementById('serviceArea').style.display='block';
     document.getElementById('original_hn').value = p.hn; document.getElementById('opd_hn').value = p.hn;
     document.getElementById('opd_cid').value = p.cid; document.getElementById('opd_name').value = p.name;
@@ -959,7 +958,7 @@
       document.getElementById('rx').value = v.rx; document.getElementById('doctor').value = v.doctor;
       document.getElementById('editAlert').style.display='block';
       document.getElementById('editMsg').innerText = "กำลังแก้ไขข้อมูลเก่า (เลือกกดปุ่มด้านล่าง)";
-    } else { cancelEdit(); }
+    } else { resetVisitOnlyFields(); }
   }
 
   function searchPatient(specificHN) {
@@ -969,7 +968,6 @@
     cancelEdit();
     callAPI('searchPatientData', { text: txt }).then(res => {
       Swal.close();
-      console.log('[DEBUG searchPatientData] raw response:', res);
       if (res.status === 'not_found') {
         Swal.fire('ไม่พบข้อมูล', '', 'error');
         document.getElementById('serviceArea').style.display='none';
@@ -1045,7 +1043,28 @@
   function autoFillUsage() { var v=document.getElementById('drugInput').value; var d=allDrugs.find(x=>x.name===v); if(d) document.getElementById('drugUsage').value=d.usage; }
   function addDrugToRx() { var n=document.getElementById('drugInput').value.trim(); var u=document.getElementById('drugUsage').value.trim(); if(n===""){return;} var rx=document.getElementById('rx'); rx.value+=(rx.value.trim()!==""?"\n":"")+`- ${n} : ${u}`; if(!allDrugs.some(x=>x.name===n)){ callAPI('addNewDrug', { name: n, usage: u }).catch(showApiError); allDrugs.push({name:n,usage:u}); var dl=document.getElementById('drugListOptions'); dl.innerHTML+=`<option value="${n}">`; } document.getElementById('drugInput').value=""; document.getElementById('drugUsage').value=""; }
   function startEdit(data) { document.getElementById('opd_row_index').value=data.rowIndex; document.getElementById('bp').value=data.bp; document.getElementById('hr').value=data.hr||data.pulse; document.getElementById('rr').value=data.rr; document.getElementById('bt').value=data.bt||data.temp; document.getElementById('bw').value=data.bw||""; document.getElementById('ht').value=data.ht||""; document.getElementById('bmi').value=data.bmi||""; document.getElementById('cc').value=data.cc; document.getElementById('pe').value=data.pe; document.getElementById('lab').value=data.lab; document.getElementById('dx').value=data.dx; document.getElementById('rx').value=data.rx; document.getElementById('doctor').value=data.doctor; document.getElementById('serviceArea').scrollIntoView({behavior:'smooth'}); document.getElementById('editAlert').style.display='block'; }
-  function cancelEdit() { document.getElementById('editAlert').style.display='none'; document.getElementById('opd_row_index').value=''; document.getElementById('cc').value=''; document.getElementById('bp').value=''; document.getElementById('hr').value=''; document.getElementById('rr').value=''; document.getElementById('bt').value=''; document.getElementById('bw').value=''; document.getElementById('ht').value=''; document.getElementById('bmi').value=''; document.getElementById('pe').value=''; document.getElementById('lab').value=''; document.getElementById('dx').value=''; document.getElementById('rx').value=''; document.getElementById('doctor').value=''; document.getElementById('opd_d').value=''; document.getElementById('opd_m').value=''; document.getElementById('opd_y').value=''; document.getElementById('opd_dob').value=''; document.getElementById('opd_age').value=''; document.getElementById('opd_address_final').value=''; document.getElementById('serv_addr_detail').value=''; document.getElementById('serv_tambon').value=''; document.getElementById('serv_amphoe').value=''; document.getElementById('serv_province').value=''; }
+  // ล้างเฉพาะช่อง "ผลตรวจ/เคสวันนี้" ไม่แตะข้อมูลส่วนตัวคนไข้ (วันเกิด/ที่อยู่ ฯลฯ)
+  // ใช้ตอน fillForm() โหลดคนไข้มาแล้วแต่ไม่มีประวัติตรวจของวันนี้ — ถ้าใช้ cancelEdit()
+  // เต็มรูปแบบตรงนี้ จะไปเคลียร์ข้อมูลคนไข้ที่เพิ่งเซ็ตไว้ถูกต้องทับซ้ำ (บั๊กเดิม)
+  function resetVisitOnlyFields() {
+    document.getElementById('editAlert').style.display='none';
+    document.getElementById('opd_row_index').value='';
+    document.getElementById('cc').value='';
+    document.getElementById('bp').value='';
+    document.getElementById('hr').value='';
+    document.getElementById('rr').value='';
+    document.getElementById('bt').value='';
+    document.getElementById('bw').value='';
+    document.getElementById('ht').value='';
+    document.getElementById('bmi').value='';
+    document.getElementById('pe').value='';
+    document.getElementById('lab').value='';
+    document.getElementById('dx').value='';
+    document.getElementById('rx').value='';
+    document.getElementById('doctor').value='';
+  }
+
+  function cancelEdit() { resetVisitOnlyFields(); document.getElementById('opd_d').value=''; document.getElementById('opd_m').value=''; document.getElementById('opd_y').value=''; document.getElementById('opd_dob').value=''; document.getElementById('opd_age').value=''; document.getElementById('opd_address_final').value=''; document.getElementById('serv_addr_detail').value=''; document.getElementById('serv_tambon').value=''; document.getElementById('serv_amphoe').value=''; document.getElementById('serv_province').value=''; }
   function preparePrint(d){ var now=new Date(); document.getElementById('p_date').innerText=now.toLocaleDateString('th-TH'); document.getElementById('p_hn').innerText=document.getElementById('opd_hn').value; document.getElementById('p_name').innerText=document.getElementById('opd_name').value; document.getElementById('p_age').innerText=document.getElementById('opd_age').value; document.getElementById('p_gender').innerText=document.getElementById('opd_gender').value; document.getElementById('p_cid').innerText=document.getElementById('opd_cid').value; document.getElementById('p_address').innerText=document.getElementById('opd_address_final').value; document.getElementById('p_allergy').innerText=document.getElementById('opd_allergy').value; document.getElementById('p_underlying').innerText=document.getElementById('opd_underlying').value; document.getElementById('p_bp').innerText=d.bp||'-'; document.getElementById('p_hr').innerText=d.hr||'-'; document.getElementById('p_rr').innerText=d.rr||'-'; document.getElementById('p_bt').innerText=d.bt||'-'; document.getElementById('p_bmi').innerText=d.bmi||'-'; document.getElementById('p_cc').innerText=d.cc||'-'; document.getElementById('p_pe').innerText=d.pe||'-'; document.getElementById('p_lab').innerText=d.lab||'-'; document.getElementById('p_dx').innerText=d.dx||'-'; document.getElementById('p_rx').innerText=d.rx||'-'; document.getElementById('p_doctor').innerText=d.doctor||'................'; }
   function printOld(d){ preparePrint(d); window.print(); }
   function submitRegister(e){ e.preventDefault(); Swal.showLoading(); var formObj = { hn: document.querySelector('input[name="hn"]').value, cid: document.querySelector('input[name="cid"]').value, dob: "", name: document.querySelector('input[name="name"]').value, gender: document.querySelector('select[name="gender"]').value, phone: document.querySelector('input[name="phone"]').value, address: "", allergy: document.querySelector('input[name="allergy"]').value, underlying: document.querySelector('input[name="underlying"]').value }; callAPI('registerPatient', { form: formObj }).then(res=>{ Swal.fire(res.includes('Error')?'Error':'Success',res,res.includes('Error')?'error':'success'); if(!res.includes('Error')){ document.getElementById('regForm').reset(); loadRecentPatients(); } }).catch(showApiError); }
