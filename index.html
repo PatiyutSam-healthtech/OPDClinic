@@ -339,7 +339,7 @@
                 <th>ชื่อ-นามสกุล</th>
                 <th>เลขบัตร (CID)</th>
                 <th>เบอร์โทร</th>
-                <th style="width: 100px;">จัดการ</th>
+                <th style="width: 90px;">จัดการ</th>
               </tr>
             </thead>
             <tbody id="patientTableBody">
@@ -366,6 +366,44 @@
         </div>
         </div>
       </div>
+    </div>
+  </div>
+</div>
+
+<div class="modal fade" id="editPatientModal" tabindex="-1">
+  <div class="modal-dialog modal-lg">
+    <div class="modal-content">
+      <form id="editPatientForm" onsubmit="return submitEditPatientProfile(event)">
+        <div class="modal-header bg-primary text-white">
+          <h5 class="modal-title"><i class="bi bi-person-lines-fill"></i> แก้ไขข้อมูลส่วนตัว: <span id="editPatientHNLabel"></span></h5>
+          <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+        </div>
+        <div class="modal-body">
+          <input type="hidden" id="editPatientHN">
+          <input type="hidden" id="editPatientDobHidden">
+          <div class="row g-2">
+            <div class="col-md-4"><label class="fw-bold">CID</label><input type="text" class="form-control" id="editPatientCid" maxlength="17" oninput="autoFormatCID(this)"></div>
+            <div class="col-md-8"><label class="fw-bold">ชื่อ-สกุล</label><input type="text" class="form-control" id="editPatientName"></div>
+            <div class="col-md-6">
+              <label class="fw-bold">วันเกิด (พ.ศ.)</label>
+              <div class="input-group input-group-sm">
+                <select class="form-select" id="editPatientD" onchange="updateDobEditPatient()"></select>
+                <select class="form-select" id="editPatientM" onchange="updateDobEditPatient()"></select>
+                <input type="number" class="form-control" id="editPatientY" placeholder="25XX" onchange="updateDobEditPatient()">
+              </div>
+            </div>
+            <div class="col-md-3"><label class="fw-bold">เพศ</label><select class="form-select" id="editPatientGender"><option value="ชาย">ชาย</option><option value="หญิง">หญิง</option></select></div>
+            <div class="col-md-3"><label class="fw-bold">เบอร์โทร</label><input type="text" class="form-control" id="editPatientPhone"></div>
+            <div class="col-12"><label class="fw-bold">ที่อยู่</label><input type="text" class="form-control" id="editPatientAddress"></div>
+            <div class="col-md-6"><label class="fw-bold text-danger">แพ้ยา</label><input type="text" class="form-control text-danger" id="editPatientAllergy"></div>
+            <div class="col-md-6"><label class="fw-bold">โรคประจำตัว</label><input type="text" class="form-control" id="editPatientUnderlying"></div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">ยกเลิก</button>
+          <button type="submit" class="btn btn-primary">บันทึก</button>
+        </div>
+      </form>
     </div>
   </div>
 </div>
@@ -709,7 +747,7 @@
 
   var allDrugs = [];
   var icd10DB = [];
-  var candidateModal, historyModal, createUserModal, editUserModal, helpModal;
+  var candidateModal, historyModal, createUserModal, editUserModal, helpModal, editPatientModal;
   var myChart = null;
   var allPatientsCache = [];
   var usersCache = [];
@@ -720,6 +758,8 @@
     createUserModal = new bootstrap.Modal(document.getElementById('createUserModal'));
     editUserModal = new bootstrap.Modal(document.getElementById('editUserModal'));
     helpModal = new bootstrap.Modal(document.getElementById('helpModal'));
+    editPatientModal = new bootstrap.Modal(document.getElementById('editPatientModal'));
+    initThaiDateOptions('editPatientD', 'editPatientM');
     initExportSelectors();
     setInterval(function () {
       var queuePane = document.getElementById('pills-queue');
@@ -765,7 +805,10 @@
         <td>${p.name}</td>
         <td>${p.cid}</td>
         <td>${p.phone}</td>
-        <td><button class="btn btn-sm btn-info text-white w-100" onclick="viewHistory('${p.hn}')"><i class="bi bi-eye"></i> ดูประวัติ</button></td>
+        <td class="text-nowrap">
+          <button class="btn btn-sm btn-info text-white me-1" onclick="viewHistory('${p.hn}')" title="ดูประวัติ"><i class="bi bi-eye"></i></button>
+          <button class="btn btn-sm btn-outline-primary" onclick="openEditPatientProfile('${p.hn}')" title="แก้ไขข้อมูลส่วนตัว"><i class="bi bi-pencil-square"></i></button>
+        </td>
       </tr>`;
     });
     tbody.innerHTML = html;
@@ -779,6 +822,75 @@
       p.phone.includes(txt)
     );
     renderPatientTable(filtered);
+  }
+
+  function updateDobEditPatient() {
+    var d = document.getElementById('editPatientD').value;
+    var m = document.getElementById('editPatientM').value;
+    var y = document.getElementById('editPatientY').value;
+    if (d && m && y && y.length === 4) {
+      var yCE = parseInt(y) - 543;
+      var iso = yCE + "-" + m.toString().padStart(2,'0') + "-" + d.toString().padStart(2,'0');
+      document.getElementById('editPatientDobHidden').value = iso;
+    } else {
+      document.getElementById('editPatientDobHidden').value = "";
+    }
+  }
+
+  function openEditPatientProfile(hn) {
+    Swal.showLoading();
+    callAPI('getPatientFullHistory', { hn: hn }).then(function(data) {
+      Swal.close();
+      if (!data.profile) { Swal.fire('ไม่พบข้อมูล', '', 'error'); return; }
+      var p = data.profile;
+      document.getElementById('editPatientHN').value = p.hn;
+      document.getElementById('editPatientHNLabel').textContent = p.hn;
+      document.getElementById('editPatientCid').value = p.cid;
+      document.getElementById('editPatientName').value = p.name;
+      document.getElementById('editPatientGender').value = p.gender;
+      document.getElementById('editPatientPhone').value = p.phone;
+      document.getElementById('editPatientAddress').value = p.address || '';
+      document.getElementById('editPatientAllergy').value = p.allergy;
+      document.getElementById('editPatientUnderlying').value = p.underlying;
+
+      if (p.dob && p.dob.includes('-')) {
+        var parts = p.dob.split('-');
+        var y = parseInt(parts[0]); var m = parseInt(parts[1]); var d = parseInt(parts[2]);
+        var displayYear = (y < 2400) ? y + 543 : y;
+        document.getElementById('editPatientD').value = d;
+        document.getElementById('editPatientM').value = m;
+        document.getElementById('editPatientY').value = displayYear;
+        document.getElementById('editPatientDobHidden').value = p.dob;
+      } else {
+        document.getElementById('editPatientD').value = '';
+        document.getElementById('editPatientM').value = '';
+        document.getElementById('editPatientY').value = '';
+        document.getElementById('editPatientDobHidden').value = '';
+      }
+      editPatientModal.show();
+    }).catch(function(err) { Swal.close(); showApiError(err); });
+  }
+
+  function submitEditPatientProfile(e) {
+    e.preventDefault();
+    var formObj = {
+      opd_hn: document.getElementById('editPatientHN').value,
+      opd_cid: document.getElementById('editPatientCid').value,
+      opd_name: document.getElementById('editPatientName').value,
+      opd_dob: document.getElementById('editPatientDobHidden').value,
+      opd_gender: document.getElementById('editPatientGender').value,
+      opd_phone: document.getElementById('editPatientPhone').value,
+      opd_address: document.getElementById('editPatientAddress').value,
+      opd_allergy: document.getElementById('editPatientAllergy').value,
+      opd_underlying: document.getElementById('editPatientUnderlying').value
+    };
+    Swal.fire({ title: 'กำลังบันทึก...', didOpen: () => { Swal.showLoading(); } });
+    callAPI('updateProfileOnly', { form: formObj }).then(function(msg) {
+      Swal.fire('สำเร็จ', msg, 'success');
+      editPatientModal.hide();
+      loadAllPatients();
+    }).catch(showApiError);
+    return false;
   }
 
   function viewHistory(hn) {
@@ -986,19 +1098,7 @@
           fillForm(res.info, null);
         }
 
-        var hHtml = '';
-        res.history.forEach(r => {
-          hHtml += `<div class="card mb-2 border-secondary">
-            <div class="card-body p-2 d-flex justify-content-between align-items-center">
-              <div><strong>${r.date}</strong><br><span class="badge bg-secondary">Dx:</span> ${r.dx}</div>
-              <div>
-                <button class="btn btn-sm btn-outline-warning me-1" onclick="selectQueue(${r.rowIndex})">✏️ แก้ไข</button>
-                <button class="btn btn-sm btn-outline-dark" onclick="printFromRow(${r.rowIndex})">🖨️</button>
-              </div>
-            </div>
-          </div>`;
-        });
-        document.getElementById('historyList').innerHTML = hHtml||'-';
+        renderHistoryList(res.history);
       }
     }).catch(err => { Swal.close(); showApiError(err); });
   }
@@ -1034,9 +1134,32 @@
       document.getElementById('queueListArea').innerHTML = html;
     }).catch(showApiError);
   }
-  function selectQueue(rowIndex) { Swal.showLoading(); callAPI('getVisitByRow', { rowIndex: rowIndex }).then(function(res) { Swal.close(); fillForm(res.patient, res.visit); var tabButton = document.getElementById('tab-service-btn'); var tab = bootstrap.Tab.getOrCreateInstance(tabButton); tab.show(); }).catch(err => { Swal.close(); showApiError(err); }); }
+  function renderHistoryList(history) {
+    var hHtml = '';
+    (history || []).forEach(r => {
+      hHtml += `<div class="card mb-2 border-secondary">
+        <div class="card-body p-2 d-flex justify-content-between align-items-center">
+          <div><strong>${r.date}</strong><br><span class="badge bg-secondary">Dx:</span> ${r.dx}</div>
+          <div>
+            <button class="btn btn-sm btn-outline-warning me-1" onclick="selectQueue(${r.rowIndex})">✏️ แก้ไข</button>
+            <button class="btn btn-sm btn-outline-dark" onclick="printFromRow(${r.rowIndex})">🖨️</button>
+          </div>
+        </div>
+      </div>`;
+    });
+    document.getElementById('historyList').innerHTML = hHtml || '-';
+  }
+
+  function loadHistoryForPatient(hn) {
+    if (!hn) return;
+    callAPI('getPatientFullHistory', { hn: hn }).then(function(data) {
+      renderHistoryList(data.visits);
+    }).catch(showApiError);
+  }
+
+  function selectQueue(rowIndex) { Swal.showLoading(); callAPI('getVisitByRow', { rowIndex: rowIndex }).then(function(res) { Swal.close(); fillForm(res.patient, res.visit); loadHistoryForPatient(res.patient.hn); var tabButton = document.getElementById('tab-service-btn'); var tab = bootstrap.Tab.getOrCreateInstance(tabButton); tab.show(); }).catch(err => { Swal.close(); showApiError(err); }); }
   function selectCandidate(hn) { candidateModal.hide(); searchPatient(hn); }
-  function printFromRow(rowIndex) { Swal.showLoading(); callAPI('getVisitByRow', { rowIndex: rowIndex }).then(function(res) { Swal.close(); fillForm(res.patient, res.visit); var d = res.visit; var formData = { bp: d.bp, hr: d.hr, rr: d.rr, bt: d.bt, cc: d.cc, pe: d.pe, lab: d.lab, dx: d.dx, rx: d.rx, doctor: d.doctor, bmi: d.bmi }; preparePrint(formData); window.print(); }).catch(err => { Swal.close(); showApiError(err); }); }
+  function printFromRow(rowIndex) { Swal.showLoading(); callAPI('getVisitByRow', { rowIndex: rowIndex }).then(function(res) { Swal.close(); fillForm(res.patient, res.visit); loadHistoryForPatient(res.patient.hn); var d = res.visit; var formData = { bp: d.bp, hr: d.hr, rr: d.rr, bt: d.bt, cc: d.cc, pe: d.pe, lab: d.lab, dx: d.dx, rx: d.rx, doctor: d.doctor, bmi: d.bmi }; preparePrint(formData); window.print(); }).catch(err => { Swal.close(); showApiError(err); }); }
   function saveOPD(mode, status) { document.getElementById('visit_status').value = status; if (mode === 'NEW_CASE') { document.getElementById('opd_row_index').value = ''; } else if (mode === 'UPDATE_CASE') { var currentRow = document.getElementById('opd_row_index').value; if (!currentRow) { Swal.fire('ข้อผิดพลาด', 'คุณยังไม่ได้เลือกรายการที่จะแก้ไข', 'warning'); return; } } var form = document.getElementById('opdForm'); var formData = {}; for(var i=0; i<form.elements.length; i++){ if(form.elements[i].name) formData[form.elements[i].name] = form.elements[i].value; } Swal.fire({title:'กำลังบันทึก...', didOpen:()=>{Swal.showLoading()}}); callAPI('saveOPDVisit', { form: formData }).then(res => { if(status === 'Completed') { Swal.fire({ title: 'บันทึกเรียบร้อย', text: "พิมพ์ใบ OPD เลยไหม?", icon: 'success', showCancelButton: true, confirmButtonText: 'พิมพ์', cancelButtonText: 'ปิด' }).then((result) => { if (result.isConfirmed) { preparePrint(formData); window.print(); } cleanupAfterSave(); }); } else { Swal.fire('ส่งเข้าคิวเรียบร้อย', '', 'success'); cleanupAfterSave(); } }).catch(showApiError); }
   function cleanupAfterSave() { cancelEdit(); document.getElementById('opdForm').reset(); document.getElementById('serviceArea').style.display='none'; loadQueue(); loadRecentActivity(); loadDashboard(); }
   function loadRecentPatients() { callAPI('getLastTenPatients').then(function(p){ var t=document.getElementById('recentPatientsBody'); if(p.length===0){t.innerHTML='<tr><td colspan=3 class="text-center">ว่าง</td></tr>';return;} var h=''; p.forEach(x=>{h+=`<tr><td class="text-primary fw-bold">${x.hn}</td><td>${x.name}</td><td>${x.cid}</td></tr>`;}); t.innerHTML=h; }).catch(showApiError); }
